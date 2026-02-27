@@ -10,8 +10,6 @@ import HeaderUser from "../integrations/clerk/header-user";
 import {
 	createTagsBySlug,
 	formatAppDate,
-	listDirectoryApps,
-	listDirectoryTags,
 	type DirectoryApp,
 	type DirectoryTag,
 } from "#/lib/directory";
@@ -53,11 +51,10 @@ function Home() {
 	const [sortBy, setSortBy] = useState<SortOption>("rating");
 	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-	const apps = useMemo(() => listDirectoryApps(), []);
-	const tags = useMemo(
-		() => listDirectoryTags().sort((a, b) => a.name.localeCompare(b.name)),
-		[],
-	);
+	const appsQuery = useQuery((api as any).appCatalog.listApps, {});
+	const tagsQuery = useQuery((api as any).appCatalog.listTags, {});
+	const apps = (appsQuery ?? []) as DirectoryApp[];
+	const tags = (tagsQuery ?? []) as DirectoryTag[];
 
 	const tagsBySlug = useMemo(() => createTagsBySlug(tags), [tags]);
 
@@ -112,10 +109,10 @@ function Home() {
 	}, [navigate]);
 
 	useEffect(() => {
-		if (selectedAppSlug && !selectedApp) {
+		if (selectedAppSlug && appsQuery && !selectedApp) {
 			closeAppDetails();
 		}
-	}, [closeAppDetails, selectedApp, selectedAppSlug]);
+	}, [appsQuery, closeAppDetails, selectedApp, selectedAppSlug]);
 
 	const sortedVisibleApps = useMemo(() => {
 		const list = [...visibleApps];

@@ -1,16 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
 import { CalendarDays, ExternalLink, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { RatingSummary } from "./AppRating";
 import AppRating from "./AppRating";
-import {
-	formatAppDate,
-	listDirectoryApps,
-	type DirectoryApp,
-	type DirectoryTag,
-} from "#/lib/directory";
+import { formatAppDate, type DirectoryTag } from "#/lib/directory";
+import type { DirectoryApp } from "#/lib/directory";
 
 export default function AppDetailsContent({
 	app,
@@ -29,14 +25,18 @@ export default function AppDetailsContent({
 	const [failedSimilarLogos, setFailedSimilarLogos] = useState<Set<string>>(
 		new Set(),
 	);
-	const [similarMatches, setSimilarMatches] = useState<Array<{ appSlug: string }>>([]);
+	const [similarApps, setSimilarApps] = useState<
+		Array<{
+			appSlug: string;
+			name: string;
+			description: string;
+			websiteHost: string;
+			logo: string;
+		}>
+	>([]);
 	const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
 	const TitleTag = titleTag;
 	const findSimilarApps = useAction((api as any).appCatalog.similarApps);
-	const appsBySlug = useMemo(
-		() => new Map<string, DirectoryApp>(listDirectoryApps().map((entry) => [entry.slug, entry])),
-		[],
-	);
 	const markSimilarLogoFailed = (appSlug: string) => {
 		setFailedSimilarLogos((current) => {
 			if (current.has(appSlug)) {
@@ -47,15 +47,6 @@ export default function AppDetailsContent({
 			return next;
 		});
 	};
-	const similarApps = useMemo(
-		() =>
-			similarMatches
-				.map((match) => appsBySlug.get(match.appSlug))
-				.filter((entry): entry is DirectoryApp => Boolean(entry))
-				.filter((entry) => entry.slug !== app.slug),
-		[app.slug, appsBySlug, similarMatches],
-	);
-
 	useEffect(() => {
 		let cancelled = false;
 		setIsLoadingSimilar(true);
@@ -64,14 +55,24 @@ export default function AppDetailsContent({
 			appSlug: app.slug,
 			limit: 4,
 		})
-			.then((matches: Array<{ appSlug: string }>) => {
-				if (!cancelled) {
-					setSimilarMatches(matches);
-				}
-			})
+			.then(
+				(matches: Array<{
+					appSlug: string;
+					name: string;
+					description: string;
+					websiteHost: string;
+					logo: string;
+				}>) => {
+					if (!cancelled) {
+						setSimilarApps(
+							matches.filter((entry) => entry.appSlug !== app.slug),
+						);
+					}
+				},
+			)
 			.catch(() => {
 				if (!cancelled) {
-					setSimilarMatches([]);
+					setSimilarApps([]);
 				}
 			})
 			.finally(() => {
@@ -175,73 +176,73 @@ export default function AppDetailsContent({
 					<p className="mt-2 mb-0 text-sm text-[var(--ink-soft)]">Finding similar apps…</p>
 				) : similarApps.length === 0 ? (
 					<p className="mt-2 mb-0 text-sm text-[var(--ink-soft)]">No similar apps yet.</p>
-					) : (
-						<div className="mt-3 -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pt-1 pb-2">
-							{similarApps.map((similar) => {
-								const cardBody = (
-									<>
-										<div className="mb-2 flex items-start gap-2">
-											<div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--chip)]">
-												{!failedSimilarLogos.has(similar.slug) ? (
-													<img
-														src={similar.logo}
-														alt={`${similar.name} logo`}
-														className="h-full w-full object-cover"
-														loading="lazy"
-														onError={() => markSimilarLogoFailed(similar.slug)}
-													/>
-												) : (
-													<span className="text-xs font-semibold text-[var(--ink-strong)]">
-														{similar.name.slice(0, 1).toUpperCase()}
-													</span>
-												)}
-											</div>
-											<div className="min-w-0">
-												<p className="m-0 truncate text-sm font-semibold text-[var(--ink-strong)]">
-													{similar.name}
-												</p>
-												<p className="m-0 truncate text-[11px] text-[var(--ink-soft)]">
-													{similar.websiteHost}
-												</p>
-											</div>
+				) : (
+					<div className="mt-3 -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pt-1 pb-2">
+						{similarApps.map((similar) => {
+							const cardBody = (
+								<>
+									<div className="mb-2 flex items-start gap-2">
+										<div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--chip)]">
+											{!failedSimilarLogos.has(similar.appSlug) ? (
+												<img
+													src={similar.logo}
+													alt={`${similar.name} logo`}
+													className="h-full w-full object-cover"
+													loading="lazy"
+													onError={() => markSimilarLogoFailed(similar.appSlug)}
+												/>
+											) : (
+												<span className="text-xs font-semibold text-[var(--ink-strong)]">
+													{similar.name.slice(0, 1).toUpperCase()}
+												</span>
+											)}
 										</div>
-										<p className="m-0 text-xs leading-5 text-[var(--ink-muted)] line-clamp-2">
-											{similar.description}
-										</p>
-									</>
-								);
+										<div className="min-w-0">
+											<p className="m-0 truncate text-sm font-semibold text-[var(--ink-strong)]">
+												{similar.name}
+											</p>
+											<p className="m-0 truncate text-[11px] text-[var(--ink-soft)]">
+												{similar.websiteHost}
+											</p>
+										</div>
+									</div>
+									<p className="m-0 text-xs leading-5 text-[var(--ink-muted)] line-clamp-2">
+										{similar.description}
+									</p>
+								</>
+							);
 
-								const cardClassName =
-									"group flex min-h-[150px] min-w-[220px] max-w-[220px] snap-start flex-col rounded-xl border border-[var(--line)] bg-[var(--card-strong)] p-2.5 text-left transition hover:-translate-y-0.5 hover:border-[color-mix(in_oklab,var(--line)_45%,var(--lagoon-deep)_55%)]";
-								const key = `similar-${app.slug}-${similar.slug}`;
+							const cardClassName =
+								"group flex min-h-[150px] min-w-[220px] max-w-[220px] snap-start flex-col rounded-xl border border-[var(--line)] bg-[var(--card-strong)] p-2.5 text-left transition hover:-translate-y-0.5 hover:border-[color-mix(in_oklab,var(--line)_45%,var(--lagoon-deep)_55%)]";
+							const key = `similar-${app.slug}-${similar.appSlug}`;
 
-								if (onSelectSimilarApp) {
-									return (
-										<button
-											key={key}
-											type="button"
-											onClick={() => onSelectSimilarApp(similar.slug)}
-											className={cardClassName}
-										>
-											{cardBody}
-										</button>
-									);
-								}
-
+							if (onSelectSimilarApp) {
 								return (
-									<Link
+									<button
 										key={key}
-										to="/apps/$slug"
-										params={{ slug: similar.slug }}
-										className={`${cardClassName} no-underline`}
+										type="button"
+										onClick={() => onSelectSimilarApp(similar.appSlug)}
+										className={cardClassName}
 									>
 										{cardBody}
-									</Link>
+									</button>
 								);
-							})}
-						</div>
-					)}
-				</div>
+							}
+
+							return (
+								<Link
+									key={key}
+									to="/apps/$slug"
+									params={{ slug: similar.appSlug }}
+									className={`${cardClassName} no-underline`}
+								>
+									{cardBody}
+								</Link>
+							);
+						})}
+					</div>
+				)}
+			</div>
 		</>
 	);
 }

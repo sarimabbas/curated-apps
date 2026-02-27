@@ -1,7 +1,22 @@
-import { allApps, allTags } from "content-collections";
+export type DirectoryApp = {
+	slug: string;
+	name: string;
+	description: string;
+	website: string;
+	websiteHost: string;
+	logo: string;
+	tags: string[];
+	apple_app_store?: string;
+	created_at: string;
+	updated_at: string;
+	createdAtMs: number;
+	updatedAtMs: number;
+};
 
-export type DirectoryApp = (typeof allApps)[number];
-export type DirectoryTag = (typeof allTags)[number];
+export type DirectoryTag = {
+	name: string;
+	slug: string;
+};
 
 const appDateFormatter = new Intl.DateTimeFormat("en-US", {
 	day: "numeric",
@@ -9,18 +24,6 @@ const appDateFormatter = new Intl.DateTimeFormat("en-US", {
 	timeZone: "UTC",
 	year: "numeric",
 });
-
-export function listDirectoryApps() {
-	return [...allApps];
-}
-
-export function listDirectoryTags() {
-	return [...allTags];
-}
-
-export function getDirectoryAppBySlug(slug: string) {
-	return allApps.find((app) => app.slug === slug);
-}
 
 export function createTagsBySlug(tags: DirectoryTag[]) {
 	return new Map<string, DirectoryTag>(tags.map((tag) => [tag.slug, tag]));
