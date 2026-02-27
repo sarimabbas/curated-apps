@@ -20,7 +20,8 @@ mcp-servers:
     args: ["-y", "@tavily/mcp-server"]
     env:
       TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
-    allowed: ["search", "search_news"]
+      DEFAULT_PARAMETERS: '{"include_images":true,"include_favicon":true,"search_depth":"advanced","max_results":15}'
+    allowed: ["search", "search_news", "extract"]
 safe-outputs:
   create-pull-request:
   add-comment:
@@ -73,8 +74,9 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
    - Start from `/tmp/gh-aw/agent/issue.json` when available.
    - Reject low-signal requests (for example, fewer than 3 meaningful words for `search:`) and call `noop`.
 2. Research the app with Tavily MCP tools:
-   - Use `search` for general app discovery and source URLs.
+   - Use `search` for discovery and source URLs.
    - Use `search_news` when freshness matters (launches, updates, shutdowns).
+   - Use `extract` on the canonical app URL with image extraction enabled to collect real asset URLs.
    - Favor official source links when extracting metadata.
 3. Verify the app exists and collect trustworthy metadata:
    - `name`
@@ -93,6 +95,7 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
     - Include app `slug` in frontmatter
      - Keep `tags` as sorted kebab-case slugs
      - For logos, prefer downloading the image into the same app folder as `logo.<ext>` and set frontmatter `logo` to `./logo.<ext>`
+     - Do not guess logo paths; extract the actual asset URL from page metadata/source (for example `og:image`, JSON-LD, or explicit image links)
      - Use a remote `logo` URL only when local download is not possible
      - Ensure every tag slug exists as a file in `packages/directory/tags/`
 6. If a needed tag is missing, add `packages/directory/tags/<tag-slug>.md` with frontmatter:
@@ -107,6 +110,16 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
 
 - Use bash to download logos directly into `packages/directory/apps/<app-slug>/logo.<ext>` whenever possible.
 - Set frontmatter `logo` to `./logo.<ext>` after download.
+- Always validate logo downloads before commit:
+  - use `curl -fL` (fail on HTTP errors)
+  - verify headers indicate image content (for example `curl -fsSI <url> | grep -i '^content-type: image/'`)
+  - if download is HTML/error text or not an image, do not commit it; either find a valid image URL or keep a remote `logo` URL and note it in PR assumptions.
+
+## Tavily extract guidance
+
+- Prefer `extract` output image URLs (or favicon) over guessed paths like `/logo.webp`.
+- If `extract` returns relative image paths, resolve them against the page URL before download.
+- Do not hardcode API keys in prompts or code; use `TAVILY_API_KEY` from GitHub secrets only.
 
 ## Pull request requirements
 
