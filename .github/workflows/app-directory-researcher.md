@@ -1,8 +1,6 @@
 ---
 description: Research a URL or search term and open a PR adding or updating an app entry.
-engine:
-  id: codex
-  version: 0.105.0
+engine: codex
 strict: true
 on:
   roles: [admin, maintainer, write]
