@@ -1,1 +1,3 @@
+- developer-tools | Developer Tools
 - pie-menus | Pie Menus
+- terminal | Terminal
