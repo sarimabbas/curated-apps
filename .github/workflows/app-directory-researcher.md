@@ -8,6 +8,9 @@ on:
     types: [labeled]
   workflow_dispatch:
 permissions: read-all
+tools:
+  web-search:
+  web-fetch:
 mcp-servers:
   tavily:
     command: npx
@@ -84,7 +87,7 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
 1. Read the issue title/body and extract the request.
    - Start from `/tmp/gh-aw/agent/issue.json` when available.
    - Reject low-signal requests (for example, fewer than 3 meaningful words for `search:`) and call `noop`.
-2. Research the app with Tavily MCP tools:
+2. Research the app with Tavily MCP tools (and optionally `web-search` / `web-fetch` when useful):
    - Use `search` for general app discovery and source URLs.
    - Use `search_news` when freshness matters (launches, updates, shutdowns).
    - Favor official source links when extracting metadata.
