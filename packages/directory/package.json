@@ -1,0 +1,24 @@
+{
+  "name": "directory",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "check": "bun run validate && bun run lint && bun test",
+    "validate": "bun run scripts/validate.ts",
+    "lint": "bun run lint:frontmatter-keys && bun run lint:tags",
+    "lint:frontmatter-keys": "bun run scripts/check-frontmatter.ts",
+    "lint:tags": "bun run scripts/check-tags.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@stacksjs/ts-md": "^0.1.1",
+    "zod": "^4.3.6"
+  }
+}
