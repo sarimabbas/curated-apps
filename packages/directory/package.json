@@ -1,5 +1,5 @@
 {
-  "name": "directory",
+  "name": "@curatedapps/directory",
   "module": "index.ts",
   "type": "module",
   "private": true,
