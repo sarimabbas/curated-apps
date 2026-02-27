@@ -1,15 +1,13 @@
 ---
 description: Research a URL or search term and open a PR adding or updating an app entry.
 engine: codex
-strict: false
+strict: true
 on:
   roles: [admin, maintainer, write]
   issues:
     types: [labeled]
   workflow_dispatch:
 permissions: read-all
-tools:
-  web-fetch:
 mcp-servers:
   tavily:
     command: npx
@@ -23,7 +21,9 @@ safe-outputs:
     max: 1
 network:
   allowed:
-    - "*"
+    - defaults
+    - node
+    - "*.tavily.com"
 steps:
   - name: Checkout repository
     uses: actions/checkout@v4
@@ -37,6 +37,20 @@ steps:
     run: |
       mkdir -p /tmp/gh-aw/agent
       printf '%s' '${{ toJson(github.event.issue) }}' > /tmp/gh-aw/agent/issue.json
+post-steps:
+  - name: Collect changed app files
+    run: |
+      set -euo pipefail
+      FILES=$(git diff --name-only | grep '^packages/directory/apps/.*\.md$' | tr '\n' ' ' || true)
+      echo "FILES=$FILES" >> "$GITHUB_ENV"
+  - name: Postprocess research assets
+    if: env.FILES != ''
+    env:
+      FILES: ${{ env.FILES }}
+    run: bun run --filter directory postprocess:research -- $FILES
+  - name: Run directory checks after postprocess
+    if: env.FILES != ''
+    run: bun run --filter directory check
 ---
 
 # app-directory-researcher
@@ -70,10 +84,9 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
 1. Read the issue title/body and extract the request.
    - Start from `/tmp/gh-aw/agent/issue.json` when available.
    - Reject low-signal requests (for example, fewer than 3 meaningful words for `search:`) and call `noop`.
-2. Research the app with Tavily MCP tools and direct fetches:
+2. Research the app with Tavily MCP tools:
    - Use `search` for general app discovery and source URLs.
    - Use `search_news` when freshness matters (launches, updates, shutdowns).
-   - Use `web-fetch` for direct URL lookups and detailed verification from official sources.
    - Favor official source links when extracting metadata.
 3. Verify the app exists and collect trustworthy metadata:
    - `name`
@@ -98,19 +111,15 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
    - `name` and `slug` keys only
    - keep keys sorted alphabetically (`name`, then `slug`)
 7. Run checks from `packages/directory`:
-   - Ensure Bun is available. If `bun` is missing, install it first:
-     - `curl -fsSL https://bun.sh/install | bash`
-     - `export BUN_INSTALL="$HOME/.bun"`
-     - `export PATH="$BUN_INSTALL/bin:$PATH"`
-   - Then run `bun run --filter directory check`
+    - Run `bun run --filter directory check`
 8. If checks pass, create one pull request using `create-pull-request`.
+   - Do not manually run asset localization in the prompt flow; workflow `postprocess:research` post-steps handle it automatically.
    - If checks fail for any reason, do not create a PR. Add one issue comment with the failing command output and call `noop`.
 9. Add one short issue comment with what was researched and a link to the PR.
 
 ## Logo file downloads
 
-- To download a logo file into an app folder, use bash tools (for example `curl -L <url> -o apps/<app-slug>/logo.png`).
-- After download, verify it is an image and set frontmatter `logo` to `./logo.<ext>`.
+- You may leave `logo` as a remote URL in frontmatter. Workflow post-steps will attempt to download and localize it to `./logo.<ext>` before PR creation.
 
 ## Pull request requirements
 
