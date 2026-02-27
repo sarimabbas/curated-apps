@@ -20,7 +20,7 @@ mcp-servers:
     args: ["-y", "@tavily/mcp-server"]
     env:
       TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
-      DEFAULT_PARAMETERS: '{"include_images":true,"include_favicon":true,"search_depth":"advanced","max_results":15}'
+      DEFAULT_PARAMETERS: "{\"include_images\":true,\"include_favicon\":true,\"search_depth\":\"advanced\",\"max_results\":15}"
     allowed: ["search", "search_news", "extract"]
 safe-outputs:
   create-pull-request:

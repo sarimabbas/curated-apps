@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"27aab3bc59707ddd4c6ce858a6000460a4de4d8331585c559ed84708aa773336","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"cc42f7bfff7b7d9c9a90362359dcc999f19380d3ef78e81d9c4574891a9f46d7","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
