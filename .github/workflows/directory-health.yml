@@ -1,0 +1,52 @@
+name: Directory Health
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  logo-url-health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Check remote logo URLs
+        run: bun run --cwd packages/directory health:logos
+
+      - name: Upsert rolling health issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          SUMMARY_JSON="packages/directory/.health/logo-health-summary.json"
+          REPORT_MD="packages/directory/.health/logo-health-report.md"
+          BROKEN_COUNT=$(bun -e "const s = JSON.parse(await Bun.file(process.argv[1]).text()); console.log(String(s.brokenCount));" "$SUMMARY_JSON")
+          TITLE="Directory Health: Broken Logo URLs"
+
+          ISSUE_NUMBER=$(gh issue list --repo "$REPO" --state open --label directory-health --search "in:title $TITLE" --json number --jq '.[0].number // empty')
+
+          if [ "$BROKEN_COUNT" = "0" ]; then
+            BODY=$'## Directory Logo URL Health\n\nAll checked remote logo URLs are healthy.\n\nThis issue is the rolling tracker for logo URL health checks.'
+          else
+            BODY=$(cat "$REPORT_MD")
+          fi
+
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --title "$TITLE" --body "$BODY"
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --label directory-health --body "$BODY"
+          fi

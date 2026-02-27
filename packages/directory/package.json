@@ -5,10 +5,11 @@
   "private": true,
   "scripts": {
     "test": "bun test",
-    "check": "bun run validate && bun run lint && bun test",
+    "check": "bun run validate && bun run lint && bun run test",
+    "health:logos": "bun run scripts/health-logo-urls.ts",
     "validate": "bun run scripts/validate.ts",
-    "lint": "bun run lint:frontmatter-keys && bun run lint:tags",
-    "lint:frontmatter-keys": "bun run scripts/check-apps.ts",
+    "lint": "bun run lint:apps && bun run lint:tags",
+    "lint:apps": "bun run scripts/check-apps.ts",
     "lint:tags": "bun run scripts/check-tags.ts"
   },
   "devDependencies": {

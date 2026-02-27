@@ -8,7 +8,11 @@ import { loadTagCatalog, runTagChecks } from "./check-tags"
 import { TAG_LABEL_TITLE_CASE_REGEX, TAG_SLUG_REGEX } from "./utils"
 import { runAllChecks } from "./validate"
 
-function createFixture(params: { appFrontmatter: string; tagFiles: Record<string, string> }): string {
+function createFixture(params: {
+  appFrontmatter: string
+  tagFiles: Record<string, string>
+  appAssets?: Record<string, string>
+}): string {
   const root = mkdtempSync(join(tmpdir(), "directory-validate-"))
   mkdirSync(join(root, "apps", "sample"), { recursive: true })
   mkdirSync(join(root, "tags"), { recursive: true })
@@ -16,6 +20,9 @@ function createFixture(params: { appFrontmatter: string; tagFiles: Record<string
     writeFileSync(join(root, "tags", fileName), `${contents}\n`)
   }
   writeFileSync(join(root, "apps", "sample", "sample.md"), `${params.appFrontmatter}\n`)
+  for (const [fileName, contents] of Object.entries(params.appAssets ?? {})) {
+    writeFileSync(join(root, "apps", "sample", fileName), contents)
+  }
   return root
 }
 
@@ -77,7 +84,7 @@ slug: productivity
     appFrontmatter: `---
 apple_app_store: https://apps.apple.com/us/app/pieoneer/id6739781207?mt=12
 description: Let your apps fly in a pie.
-logo: https://example.com/icon.png
+logo: ./logo.svg
 name: Pieoneer
 slug: pieoneer
 tags:
@@ -85,6 +92,9 @@ tags:
   - productivity
 website: https://example.com
 ---`,
+    appAssets: {
+      "logo.svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><rect width=\"10\" height=\"10\"/></svg>",
+    },
   })
 
   const [appErrors, tagErrors, allErrors] = await Promise.all([
@@ -125,6 +135,78 @@ website: https://example.com
 
   expect(appErrors.some(error => error.includes("frontmatter keys must be sorted"))).toBe(true)
   expect(tagErrors.some(error => error.includes("must be kebab-case slug"))).toBe(true)
+})
+
+test("app checks fail for missing local logo file", async () => {
+  const root = createFixture({
+    tagFiles: {
+      "pie-menus.md": `---
+name: Pie Menus
+slug: pie-menus
+---`,
+    },
+    appFrontmatter: `---
+apple_app_store: https://apps.apple.com/us/app/pieoneer/id6739781207?mt=12
+description: Let your apps fly in a pie.
+logo: ./logo.png
+name: Pieoneer
+slug: pieoneer
+tags:
+  - pie-menus
+website: https://example.com
+---`,
+  })
+
+  const appErrors = await runAppChecks({ cwd: root })
+  expect(appErrors.some(error => error.includes("missing local logo file"))).toBe(true)
+})
+
+test("app checks reject local logo names outside logo.<ext>", async () => {
+  const root = createFixture({
+    tagFiles: {
+      "pie-menus.md": `---
+name: Pie Menus
+slug: pie-menus
+---`,
+    },
+    appFrontmatter: `---
+apple_app_store: https://apps.apple.com/us/app/pieoneer/id6739781207?mt=12
+description: Let your apps fly in a pie.
+logo: icon.png
+name: Pieoneer
+slug: pieoneer
+tags:
+  - pie-menus
+website: https://example.com
+---`,
+  })
+
+  const appErrors = await runAppChecks({ cwd: root })
+  expect(appErrors.some(error => error.includes("logo must be an https URL or a relative local file like ./logo.png"))).toBe(true)
+})
+
+test("app checks reject parent directory logo paths", async () => {
+  const root = createFixture({
+    tagFiles: {
+      "pie-menus.md": `---
+name: Pie Menus
+slug: pie-menus
+---`,
+    },
+    appFrontmatter: `---
+apple_app_store: https://apps.apple.com/us/app/pieoneer/id6739781207?mt=12
+description: Let your apps fly in a pie.
+logo: ../logo.png
+name: Pieoneer
+slug: pieoneer
+tags:
+  - pie-menus
+website: https://example.com
+---`,
+  })
+
+  const appErrors = await runAppChecks({ cwd: root })
+  expect(appErrors.some(error => error.includes("logo must be an https URL or a relative local file like ./logo.png"))).toBe(true)
 })
 
 test("checks report duplicate app and tag slugs", async () => {

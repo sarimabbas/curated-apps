@@ -71,18 +71,20 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
    - `description` (concise, neutral)
    - `website`
    - optional `apple_app_store`
-   - `logo` URL if available
+   - logo source URL if available
 4. Decide if this is a new app or an update to an existing app.
    - Before editing files, check for duplicates:
      - existing app file for the same app
      - existing open PR for the same app/request
    - If no net-new change is needed, call `noop`.
 5. Edit files in `packages/directory`:
-   - Add or update `packages/directory/apps/<app-slug>/<app-slug>.md`
-   - Keep frontmatter keys sorted alphabetically
-   - Include app `slug` in frontmatter
-   - Keep `tags` as sorted kebab-case slugs
-   - Ensure every tag slug exists as a file in `packages/directory/tags/`
+    - Add or update `packages/directory/apps/<app-slug>/<app-slug>.md`
+    - Keep frontmatter keys sorted alphabetically
+    - Include app `slug` in frontmatter
+    - Keep `tags` as sorted kebab-case slugs
+    - For logos, prefer downloading the image into the same app folder as `logo.<ext>` and set frontmatter `logo` to `./logo.<ext>`
+    - Use a remote `logo` URL only when local download is not possible
+    - Ensure every tag slug exists as a file in `packages/directory/tags/`
 6. If a needed tag is missing, add `packages/directory/tags/<tag-slug>.md` with frontmatter:
    - `name` and `slug` keys only
    - keep keys sorted alphabetically (`name`, then `slug`)
