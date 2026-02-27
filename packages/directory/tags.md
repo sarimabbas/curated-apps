@@ -1,1 +1,2 @@
 - pie-menus | Pie Menus
+- terminal | Terminal
