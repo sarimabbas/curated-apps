@@ -24,6 +24,11 @@ network:
   allowed:
     - defaults
     - "*.tavily.com"
+steps:
+  - name: Setup Bun
+    uses: oven-sh/setup-bun@v2
+  - name: Install directory dependencies
+    run: bun install --cwd packages/directory
 ---
 
 # app-directory-researcher
@@ -75,14 +80,16 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
 5. Edit files in `packages/directory`:
    - Add or update `packages/directory/apps/<app-slug>/<app-slug>.md`
    - Keep frontmatter keys sorted alphabetically
+   - Include app `slug` in frontmatter
    - Keep `tags` as sorted kebab-case slugs
-   - Ensure every tag slug exists in `packages/directory/tags.md`
-6. If a needed tag is missing, add it to `packages/directory/tags.md` in this format:
-   - `- tag-slug | Tag Label`
-   - keep the file sorted by slug
+   - Ensure every tag slug exists as a file in `packages/directory/tags/`
+6. If a needed tag is missing, add `packages/directory/tags/<tag-slug>.md` with frontmatter:
+   - `name` and `slug` keys only
+   - keep keys sorted alphabetically (`name`, then `slug`)
 7. Run checks from `packages/directory`:
    - `bun run check`
 8. If checks pass, create one pull request using `create-pull-request`.
+   - If checks fail for any reason, do not create a PR. Add one issue comment with the failing command output and call `noop`.
 9. Add one short issue comment with what was researched and a link to the PR.
 
 ## Pull request requirements

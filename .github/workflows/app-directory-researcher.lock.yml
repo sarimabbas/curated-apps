@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"22079c2742cff6c81a89060c0dd42df2d59d52ee77d022af3ce2363585123a6f","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"a4b75c2720d61407d90e51100691137ff2f98c42dce8279d14dbaf486f749823","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
@@ -260,6 +260,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+        with:
+          bun-version: '1.1'
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
@@ -267,6 +271,9 @@ jobs:
           package-manager-cache: false
       - name: Create gh-aw temp directory
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
+      - name: Install directory dependencies
+        run: bun install --cwd packages/directory
+
       - name: Configure Git credentials
         env:
           REPO_NAME: ${{ github.repository }}

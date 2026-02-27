@@ -13,6 +13,7 @@ const appSchema = z
     description: z.string().min(1),
     logo: z.url(),
     name: z.string().min(1),
+    slug: z.string().regex(TAG_SLUG_REGEX, "app slug must be a kebab-case slug"),
     tags: z.array(z.string().regex(TAG_SLUG_REGEX, "tag must be a kebab-case slug")).min(1),
     website: z.url(),
   })
@@ -41,9 +42,10 @@ export function getFrontmatterKeys(frontmatterBlock: string): string[] {
     .filter((key): key is string => Boolean(key))
 }
 
-export async function runFrontmatterChecks(options?: { cwd?: string }): Promise<string[]> {
+export async function runAppChecks(options?: { cwd?: string }): Promise<string[]> {
   const cwd = options?.cwd ?? DEFAULT_CWD
   const errors: string[] = []
+  const appSlugToFile = new Map<string, string>()
 
   for await (const appFile of APP_GLOB.scan({ cwd })) {
     const appPath = new URL(appFile, `file://${cwd}/`)
@@ -68,20 +70,29 @@ export async function runFrontmatterChecks(options?: { cwd?: string }): Promise<
     if (!isSorted(keys)) {
       errors.push(`${appFile} frontmatter keys must be sorted alphabetically`)
     }
+
+    if (typeof data.slug === "string") {
+      const existing = appSlugToFile.get(data.slug)
+      if (existing) {
+        errors.push(`${appFile} duplicates app slug "${data.slug}" already used by ${existing}`)
+      } else {
+        appSlugToFile.set(data.slug, appFile)
+      }
+    }
   }
 
   return errors
 }
 
 async function main(): Promise<void> {
-  const errors = await runFrontmatterChecks()
+  const errors = await runAppChecks()
 
   if (errors.length === 0) {
-    console.log("Frontmatter checks passed")
+    console.log("App checks passed")
     return
   }
 
-  console.error(`Frontmatter checks failed with ${errors.length} issue(s):`)
+  console.error(`App checks failed with ${errors.length} issue(s):`)
   for (const error of errors) {
     console.error(`- ${error}`)
   }

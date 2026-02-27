@@ -1,13 +1,13 @@
-import { runFrontmatterChecks } from "./check-frontmatter"
+import { runAppChecks } from "./check-apps"
 import { runTagChecks } from "./check-tags"
 
 export async function runAllChecks(options?: { cwd?: string }): Promise<string[]> {
-  const [frontmatterErrors, tagErrors] = await Promise.all([
-    runFrontmatterChecks(options),
+  const [appErrors, tagErrors] = await Promise.all([
+    runAppChecks(options),
     runTagChecks(options),
   ])
 
-  return [...frontmatterErrors, ...tagErrors]
+  return [...appErrors, ...tagErrors]
 }
 
 async function main(): Promise<void> {

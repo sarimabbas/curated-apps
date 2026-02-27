@@ -9,6 +9,11 @@
       "repo": "github/gh-aw/actions/setup",
       "version": "v0.50.5",
       "sha": "a7d371cc7e68f270ded0592942424548e05bf1c2"
+    },
+    "oven-sh/setup-bun@v2": {
+      "repo": "oven-sh/setup-bun",
+      "version": "v2",
+      "sha": "3d267786b128fe76c2f16a390aa2448b815359f3"
     }
   }
 }

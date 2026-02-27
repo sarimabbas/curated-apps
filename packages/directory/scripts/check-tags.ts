@@ -1,71 +1,85 @@
 import { parseFrontmatter } from "@stacksjs/ts-md"
+import { z } from "zod"
+
+import { getFrontmatterBlock, getFrontmatterKeys } from "./check-apps"
 import { isSorted, TAG_LABEL_TITLE_CASE_REGEX, TAG_SLUG_REGEX } from "./utils"
 
 const APP_GLOB = new Bun.Glob("apps/**/*.md")
+const TAG_GLOB = new Bun.Glob("tags/**/*.md")
 const DEFAULT_CWD = new URL("..", import.meta.url).pathname
 
+const tagSchema = z
+  .object({
+    name: z.string().min(1).regex(TAG_LABEL_TITLE_CASE_REGEX, "name must be alphanumeric Title Case"),
+    slug: z.string().regex(TAG_SLUG_REGEX, "slug must be kebab-case"),
+  })
+  .strict()
+
 export type TagCatalogEntry = {
-  label: string
+  name: string
   slug: string
 }
 
-export function parseTagsFile(contents: string): { entries: TagCatalogEntry[]; errors: string[] } {
+export async function loadTagCatalog(cwd: string): Promise<{
+  entries: TagCatalogEntry[]
+  slugSet: Set<string>
+  errors: string[]
+}> {
   const entries: TagCatalogEntry[] = []
   const errors: string[] = []
+  const slugToFile = new Map<string, string>()
 
-  const lines = contents.split("\n")
-  for (const [index, rawLine] of lines.entries()) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith("#")) continue
+  for await (const tagFile of TAG_GLOB.scan({ cwd })) {
+    const tagPath = new URL(tagFile, `file://${cwd}/`)
+    const contents = await Bun.file(tagPath).text()
+    const { data } = parseFrontmatter(contents)
 
-    if (!line.startsWith("- ")) {
-      errors.push(`tags.md:${index + 1} must start with \"- \"`)
+    const frontmatter = getFrontmatterBlock(contents)
+    if (!frontmatter) {
+      errors.push(`${tagFile} is missing valid frontmatter block`)
       continue
     }
 
-    const match = /^-\s+([a-z0-9]+(?:-[a-z0-9]+)*)\s*\|\s*(.+)$/.exec(line)
-    if (!match) {
-      errors.push(`tags.md:${index + 1} must follow \"- slug | Label\" format`)
+    const keys = getFrontmatterKeys(frontmatter)
+    if (!isSorted(keys)) {
+      errors.push(`${tagFile} frontmatter keys must be sorted alphabetically`)
+    }
+
+    const result = tagSchema.safeParse(data)
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const field = issue.path.join(".") || "frontmatter"
+        errors.push(`${tagFile} -> ${field}: ${issue.message}`)
+      }
       continue
     }
 
-    const slug = match[1]
-    const label = match[2]
-    if (!slug || !label) {
-      errors.push(`tags.md:${index + 1} must follow \"- slug | Label\" format`)
+    const existing = slugToFile.get(result.data.slug)
+    if (existing) {
+      errors.push(`${tagFile} duplicates tag slug "${result.data.slug}" already used by ${existing}`)
       continue
     }
 
-    entries.push({ label: label.trim(), slug })
+    slugToFile.set(result.data.slug, tagFile)
+    entries.push(result.data)
   }
 
-  return { entries, errors }
+  return {
+    entries,
+    slugSet: new Set(entries.map(tag => tag.slug)),
+    errors,
+  }
 }
 
 export async function runTagChecks(options?: { cwd?: string }): Promise<string[]> {
   const cwd = options?.cwd ?? DEFAULT_CWD
   const errors: string[] = []
 
-  const tagsPath = new URL("tags.md", `file://${cwd}/`)
-  const tagsContents = await Bun.file(tagsPath).text()
-  const parsedTags = parseTagsFile(tagsContents)
-  errors.push(...parsedTags.errors)
+  const catalog = await loadTagCatalog(cwd)
+  errors.push(...catalog.errors)
 
-  const knownTagSlugs = parsedTags.entries.map(tag => tag.slug)
-  const knownTagSet = new Set(knownTagSlugs)
-
-  if (!isSorted(knownTagSlugs)) {
-    errors.push("tags.md tag slugs must be sorted alphabetically")
-  }
-
-  for (const tag of parsedTags.entries) {
-    if (!TAG_SLUG_REGEX.test(tag.slug)) {
-      errors.push(`tags.md has invalid slug \"${tag.slug}\" (must be kebab-case)`)
-    }
-
-    if (!TAG_LABEL_TITLE_CASE_REGEX.test(tag.label)) {
-      errors.push(`tags.md has invalid label \"${tag.label}\" (must be alphanumeric Title Case)`)
-    }
+  if (catalog.entries.length === 0) {
+    errors.push("tags directory must contain at least one tag file")
   }
 
   for await (const appFile of APP_GLOB.scan({ cwd })) {
@@ -79,19 +93,18 @@ export async function runTagChecks(options?: { cwd?: string }): Promise<string[]
     }
 
     const stringTags = data.tags.filter((tag): tag is string => typeof tag === "string")
-
     if (!isSorted(stringTags)) {
       errors.push(`${appFile} tags must be sorted alphabetically`)
     }
 
     for (const tag of data.tags) {
       if (typeof tag !== "string" || !TAG_SLUG_REGEX.test(tag)) {
-        errors.push(`${appFile} has invalid tag \"${String(tag)}\" (must be kebab-case slug)`)
+        errors.push(`${appFile} has invalid tag "${String(tag)}" (must be kebab-case slug)`)
         continue
       }
 
-      if (!knownTagSet.has(tag)) {
-        errors.push(`${appFile} references unknown tag \"${tag}\"`)
+      if (!catalog.slugSet.has(tag)) {
+        errors.push(`${appFile} references unknown tag "${tag}"`)
       }
     }
   }
