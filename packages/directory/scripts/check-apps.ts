@@ -10,7 +10,7 @@ const LOCAL_LOGO_REGEX = /^\.\/logo\.(png|jpe?g|webp|svg|gif|avif)$/
 
 const appSchema = z
   .object({
-    apple_app_store: z.url(),
+    apple_app_store: z.url().optional(),
     description: z.string().min(1),
     logo: z.string().refine(
       value => z.url().safeParse(value).success || LOCAL_LOGO_REGEX.test(value),
