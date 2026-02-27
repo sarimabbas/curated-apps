@@ -7,7 +7,6 @@
     "test": "bun test",
     "check": "bun run validate && bun run lint && bun run test",
     "health:logos": "bun run scripts/health-logo-urls.ts",
-    "postprocess:research": "bun run scripts/postprocess-research.ts",
     "validate": "bun run scripts/validate.ts",
     "lint": "bun run lint:apps && bun run lint:tags",
     "lint:apps": "bun run scripts/check-apps.ts",

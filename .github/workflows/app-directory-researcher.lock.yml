@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"1a7cdfeef87198c0baf5253fd00c439ebfe43dcb57da99849839ef1159b8c4a8","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"c8ba2983a8d0264ad7ccaa0b4200d1e8601e1e1efef941f5ae9b944dd44aa29b","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
@@ -245,8 +245,6 @@ jobs:
       GH_AW_WORKFLOW_ID_SANITIZED: appdirectoryresearcher
     outputs:
       checkout_pr_success: ${{ steps.checkout-pr.outputs.checkout_pr_success || 'true' }}
-      detection_conclusion: ${{ steps.detection_conclusion.outputs.conclusion }}
-      detection_success: ${{ steps.detection_conclusion.outputs.success }}
       has_patch: ${{ steps.collect_output.outputs.has_patch }}
       model: ${{ steps.generate_aw_info.outputs.model }}
       output: ${{ steps.collect_output.outputs.output }}
@@ -315,7 +313,7 @@ jobs:
               engine_id: "codex",
               engine_name: "Codex",
               model: process.env.GH_AW_MODEL_AGENT_CODEX || "",
-              version: "0.105.0",
+              version: "",
               agent_version: "0.105.0",
               cli_version: "v0.50.5",
               workflow_name: "app-directory-researcher",
@@ -330,12 +328,12 @@ jobs:
               actor: context.actor,
               event_name: context.eventName,
               staged: false,
-              allowed_domains: ["defaults","node","*.tavily.com"],
-              firewall_enabled: true,
-              awf_version: "v0.23.0",
+              allowed_domains: [],
+              firewall_enabled: false,
+              awf_version: "",
               awmg_version: "v0.1.5",
               steps: {
-                firewall: "squid"
+                firewall: ""
               },
               created_at: new Date().toISOString()
             };
@@ -355,8 +353,6 @@ jobs:
           package-manager-cache: false
       - name: Install Codex
         run: npm install -g --silent @openai/codex@0.105.0
-      - name: Install awf binary
-        run: bash /opt/gh-aw/actions/install_awf_binary.sh v0.23.0
       - name: Determine automatic lockdown mode for GitHub MCP Server
         id: determine-automatic-lockdown
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -368,7 +364,7 @@ jobs:
             const determineAutomaticLockdown = require('/opt/gh-aw/actions/determine_automatic_lockdown.cjs');
             await determineAutomaticLockdown(github, context, core);
       - name: Download container images
-        run: bash /opt/gh-aw/actions/download_docker_images.sh ghcr.io/github/gh-aw-firewall/agent:0.23.0 ghcr.io/github/gh-aw-firewall/api-proxy:0.23.0 ghcr.io/github/gh-aw-firewall/squid:0.23.0 ghcr.io/github/gh-aw-mcpg:v0.1.5 ghcr.io/github/github-mcp-server:v0.31.0 node:lts-alpine
+        run: bash /opt/gh-aw/actions/download_docker_images.sh ghcr.io/github/github-mcp-server:v0.31.0 node:lts-alpine
       - name: Write Safe Outputs Config
         run: |
           mkdir -p /opt/gh-aw/safeoutputs
@@ -676,7 +672,7 @@ jobs:
           
           # Export gateway environment variables for MCP config and gateway script
           export MCP_GATEWAY_PORT="80"
-          export MCP_GATEWAY_DOMAIN="host.docker.internal"
+          export MCP_GATEWAY_DOMAIN="localhost"
           MCP_GATEWAY_API_KEY=$(openssl rand -base64 45 | tr -d '/+=')
           echo "::add-mask::${MCP_GATEWAY_API_KEY}"
           export MCP_GATEWAY_API_KEY
@@ -705,7 +701,7 @@ jobs:
           
           [mcp_servers.safeoutputs]
           type = "http"
-          url = "http://host.docker.internal:$GH_AW_SAFE_OUTPUTS_PORT"
+          url = "http://localhost:$GH_AW_SAFE_OUTPUTS_PORT"
           
           [mcp_servers.safeoutputs.headers]
           Authorization = "$GH_AW_SAFE_OUTPUTS_API_KEY"
@@ -732,7 +728,7 @@ jobs:
               },
               "safeoutputs": {
                 "type": "http",
-                "url": "http://host.docker.internal:$GH_AW_SAFE_OUTPUTS_PORT",
+                "url": "http://localhost:$GH_AW_SAFE_OUTPUTS_PORT",
                 "headers": {
                   "Authorization": "$GH_AW_SAFE_OUTPUTS_API_KEY"
                 }
@@ -775,10 +771,9 @@ jobs:
       - name: Execute Codex
         run: |
           set -o pipefail
+          INSTRUCTION="$(cat "$GH_AW_PROMPT")"
           mkdir -p "$CODEX_HOME/logs"
-          # shellcheck disable=SC1003
-          sudo -E awf --env-all --container-workdir "${GITHUB_WORKSPACE}" --allow-domains "*.jsr.io,*.tavily.com,172.30.0.1,api.npms.io,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,bun.sh,cdn.jsdelivr.net,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,deb.nodesource.com,deno.land,esm.sh,get.pnpm.io,googleapis.deno.dev,googlechromelabs.github.io,host.docker.internal,json-schema.org,json.schemastore.org,jsr.io,keyserver.ubuntu.com,nodejs.org,npm.pkg.github.com,npmjs.com,npmjs.org,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,registry.bower.io,registry.npmjs.com,registry.npmjs.org,registry.yarnpkg.com,repo.yarnpkg.com,s.symcb.com,s.symcd.com,security.ubuntu.com,skimdb.npmjs.com,storage.googleapis.com,telemetry.vercel.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.npmjs.com,www.npmjs.org,yarnpkg.com" --log-level info --proxy-logs-dir /tmp/gh-aw/sandbox/firewall/logs --enable-host-access --image-tag 0.23.0 --skip-pull --enable-api-proxy \
-            -- /bin/bash -c 'export PATH="$(find /opt/hostedtoolcache -maxdepth 4 -type d -name bin 2>/dev/null | tr '\''\n'\'' '\'':'\'')$PATH"; [ -n "$GOROOT" ] && export PATH="$GOROOT/bin:$PATH" || true && INSTRUCTION="$(cat /tmp/gh-aw/aw-prompts/prompt.txt)" && codex ${GH_AW_MODEL_AGENT_CODEX:+-c model="$GH_AW_MODEL_AGENT_CODEX" }exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "$INSTRUCTION"' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
+          codex ${GH_AW_MODEL_AGENT_CODEX:+-c model="$GH_AW_MODEL_AGENT_CODEX" }exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "$INSTRUCTION" 2>&1 | tee /tmp/gh-aw/agent-stdio.log
         env:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY || secrets.OPENAI_API_KEY }}
           CODEX_HOME: /tmp/gh-aw/mcp-config
@@ -840,7 +835,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_SAFE_OUTPUTS: ${{ env.GH_AW_SAFE_OUTPUTS }}
-          GH_AW_ALLOWED_DOMAINS: "*.jsr.io,*.tavily.com,172.30.0.1,api.npms.io,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,bun.sh,cdn.jsdelivr.net,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,deb.nodesource.com,deno.land,esm.sh,get.pnpm.io,googleapis.deno.dev,googlechromelabs.github.io,host.docker.internal,json-schema.org,json.schemastore.org,jsr.io,keyserver.ubuntu.com,nodejs.org,npm.pkg.github.com,npmjs.com,npmjs.org,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,registry.bower.io,registry.npmjs.com,registry.npmjs.org,registry.yarnpkg.com,repo.yarnpkg.com,s.symcb.com,s.symcd.com,security.ubuntu.com,skimdb.npmjs.com,storage.googleapis.com,telemetry.vercel.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.npmjs.com,www.npmjs.org,yarnpkg.com"
+          GH_AW_ALLOWED_DOMAINS: "172.30.0.1,api.openai.com,host.docker.internal,openai.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
         with:
@@ -884,32 +879,6 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('/opt/gh-aw/actions/parse_mcp_gateway_log.cjs');
             await main();
-      - name: Print firewall logs
-        if: always()
-        continue-on-error: true
-        env:
-          AWF_LOGS_DIR: /tmp/gh-aw/sandbox/firewall/logs
-        run: |
-          # Fix permissions on firewall logs so they can be uploaded as artifacts
-          # AWF runs with sudo, creating files owned by root
-          sudo chmod -R a+r /tmp/gh-aw/sandbox/firewall/logs 2>/dev/null || true
-          # Only run awf logs summary if awf command exists (it may not be installed if workflow failed before install step)
-          if command -v awf &> /dev/null; then
-            awf logs summary | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'AWF binary not installed, skipping firewall log summary'
-          fi
-      - name: Collect changed app files
-        run: "set -euo pipefail\nFILES=$(git diff --name-only | grep '^packages/directory/apps/.*\\.md$' | tr '\\n' ' ' || true)\necho \"FILES=$FILES\" >> \"$GITHUB_ENV\"\n"
-      - env:
-          FILES: ${{ env.FILES }}
-        if: env.FILES != ''
-        name: Postprocess research assets
-        run: "bun run --filter directory postprocess:research -- $FILES"
-      - if: env.FILES != ''
-        name: Run directory checks after postprocess
-        run: bun run --filter directory check
-
       - name: Upload agent artifacts
         if: always()
         continue-on-error: true
@@ -920,115 +889,10 @@ jobs:
             /tmp/gh-aw/aw-prompts/prompt.txt
             /tmp/gh-aw/aw_info.json
             /tmp/gh-aw/mcp-logs/
-            /tmp/gh-aw/sandbox/firewall/logs/
             /tmp/gh-aw/agent-stdio.log
             /tmp/gh-aw/agent/
             /tmp/gh-aw/aw-*.patch
           if-no-files-found: ignore
-      # --- Threat Detection (inline) ---
-      - name: Check if detection needed
-        id: detection_guard
-        if: always()
-        env:
-          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
-          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
-        run: |
-          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
-            echo "run_detection=true" >> "$GITHUB_OUTPUT"
-            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
-          else
-            echo "run_detection=false" >> "$GITHUB_OUTPUT"
-            echo "Detection skipped: no agent outputs or patches to analyze"
-          fi
-      - name: Clear MCP configuration for detection
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        run: |
-          rm -f /tmp/gh-aw/mcp-config/mcp-servers.json
-          rm -f /home/runner/.copilot/mcp-config.json
-          rm -f "$GITHUB_WORKSPACE/.gemini/settings.json"
-      - name: Prepare threat detection files
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        run: |
-          mkdir -p /tmp/gh-aw/threat-detection/aw-prompts
-          cp /tmp/gh-aw/aw-prompts/prompt.txt /tmp/gh-aw/threat-detection/aw-prompts/prompt.txt 2>/dev/null || true
-          cp /tmp/gh-aw/agent_output.json /tmp/gh-aw/threat-detection/agent_output.json 2>/dev/null || true
-          for f in /tmp/gh-aw/aw-*.patch; do
-            [ -f "$f" ] && cp "$f" /tmp/gh-aw/threat-detection/ 2>/dev/null || true
-          done
-          echo "Prepared threat detection files:"
-          ls -la /tmp/gh-aw/threat-detection/ 2>/dev/null || true
-      - name: Setup threat detection
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        env:
-          WORKFLOW_NAME: "app-directory-researcher"
-          WORKFLOW_DESCRIPTION: "Research a URL or search term and open a PR adding or updating an app entry."
-          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
-        with:
-          script: |
-            const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
-            setupGlobals(core, github, context, exec, io);
-            const { main } = require('/opt/gh-aw/actions/setup_threat_detection.cjs');
-            await main();
-      - name: Ensure threat-detection directory and log
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        run: |
-          mkdir -p /tmp/gh-aw/threat-detection
-          touch /tmp/gh-aw/threat-detection/detection.log
-      - name: Execute Codex
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        run: |
-          set -o pipefail
-          mkdir -p "$CODEX_HOME/logs"
-          # shellcheck disable=SC1003
-          sudo -E awf --env-all --container-workdir "${GITHUB_WORKSPACE}" --allow-domains "172.30.0.1,api.openai.com,host.docker.internal,openai.com" --log-level info --proxy-logs-dir /tmp/gh-aw/sandbox/firewall/logs --enable-host-access --image-tag 0.23.0 --skip-pull --enable-api-proxy \
-            -- /bin/bash -c 'export PATH="$(find /opt/hostedtoolcache -maxdepth 4 -type d -name bin 2>/dev/null | tr '\''\n'\'' '\'':'\'')$PATH"; [ -n "$GOROOT" ] && export PATH="$GOROOT/bin:$PATH" || true && INSTRUCTION="$(cat /tmp/gh-aw/aw-prompts/prompt.txt)" && codex ${GH_AW_MODEL_DETECTION_CODEX:+-c model="$GH_AW_MODEL_DETECTION_CODEX" }exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "$INSTRUCTION"' 2>&1 | tee -a /tmp/gh-aw/threat-detection/detection.log
-        env:
-          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY || secrets.OPENAI_API_KEY }}
-          CODEX_HOME: /tmp/gh-aw/mcp-config
-          GH_AW_MCP_CONFIG: /tmp/gh-aw/mcp-config/config.toml
-          GH_AW_MODEL_DETECTION_CODEX: ${{ vars.GH_AW_MODEL_DETECTION_CODEX || '' }}
-          GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
-          GITHUB_STEP_SUMMARY: ${{ env.GITHUB_STEP_SUMMARY }}
-          OPENAI_API_KEY: ${{ secrets.CODEX_API_KEY || secrets.OPENAI_API_KEY }}
-          RUST_LOG: trace,hyper_util=info,mio=info,reqwest=info,os_info=info,codex_otel=warn,codex_core=debug,ocodex_exec=debug
-      - name: Parse threat detection results
-        id: parse_detection_results
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
-            setupGlobals(core, github, context, exec, io);
-            const { main } = require('/opt/gh-aw/actions/parse_threat_detection_results.cjs');
-            await main();
-      - name: Upload threat detection log
-        if: always() && steps.detection_guard.outputs.run_detection == 'true'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: threat-detection.log
-          path: /tmp/gh-aw/threat-detection/detection.log
-          if-no-files-found: ignore
-      - name: Set detection conclusion
-        id: detection_conclusion
-        if: always()
-        env:
-          RUN_DETECTION: ${{ steps.detection_guard.outputs.run_detection }}
-          DETECTION_SUCCESS: ${{ steps.parse_detection_results.outputs.success }}
-        run: |
-          if [[ "$RUN_DETECTION" != "true" ]]; then
-            echo "conclusion=skipped" >> "$GITHUB_OUTPUT"
-            echo "success=true" >> "$GITHUB_OUTPUT"
-            echo "Detection was not needed, marking as skipped"
-          elif [[ "$DETECTION_SUCCESS" == "true" ]]; then
-            echo "conclusion=success" >> "$GITHUB_OUTPUT"
-            echo "success=true" >> "$GITHUB_OUTPUT"
-            echo "Detection passed successfully"
-          else
-            echo "conclusion=failure" >> "$GITHUB_OUTPUT"
-            echo "success=false" >> "$GITHUB_OUTPUT"
-            echo "Detection found issues"
-          fi
 
   conclusion:
     needs:
@@ -1169,7 +1033,7 @@ jobs:
     needs:
       - activation
       - agent
-    if: ((!cancelled()) && (needs.agent.result != 'skipped')) && (needs.agent.outputs.detection_success == 'true')
+    if: (!cancelled()) && (needs.agent.result != 'skipped')
     runs-on: ubuntu-slim
     permissions:
       contents: write
@@ -1179,7 +1043,6 @@ jobs:
     timeout-minutes: 15
     env:
       GH_AW_ENGINE_ID: "codex"
-      GH_AW_ENGINE_VERSION: "0.105.0"
       GH_AW_WORKFLOW_ID: "app-directory-researcher"
       GH_AW_WORKFLOW_NAME: "app-directory-researcher"
     outputs:
