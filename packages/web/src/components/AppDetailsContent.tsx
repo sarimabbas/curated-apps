@@ -176,7 +176,7 @@ export default function AppDetailsContent({
 				) : similarApps.length === 0 ? (
 					<p className="mt-2 mb-0 text-sm text-[var(--ink-soft)]">No similar apps yet.</p>
 					) : (
-						<div className="mt-3 -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-2">
+						<div className="mt-3 -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pt-1 pb-2">
 							{similarApps.map((similar) => {
 								const cardBody = (
 									<>
