@@ -1,6 +1,6 @@
 ---
 description: Research a URL or search term and open a PR adding or updating an app entry.
-engine: copilot
+engine: codex
 on:
   roles: [admin, maintainer, write]
   issues:
