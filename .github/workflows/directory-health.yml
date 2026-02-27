@@ -20,6 +20,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Print Bun version
+        run: bun --version
+
       - name: Install dependencies
         run: bun install --filter './packages/directory'
 

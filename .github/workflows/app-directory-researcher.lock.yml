@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"ce4b8c2f05c702364b5f9f812eaeae64bcc898d44b43d75a217972edc986e9d9","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"f0395d3f24cef2d214a80d770d9e1db3eef7e1cc4e8ab9a934f42e31d40cf0df","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
@@ -269,6 +269,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Print Bun version
+        run: bun --version
       - name: Install directory dependencies
         run: bun install --filter './packages/directory'
       - name: Precompute issue context

@@ -2,20 +2,32 @@ name: Directory Checks
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "packages/directory/**"
+      - ".github/workflows/directory-checks.yml"
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/directory/**"
       - ".github/workflows/directory-checks.yml"
 
 jobs:
   validate-directory:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+
+      - name: Print Bun version
+        run: bun --version
 
       - name: Install dependencies
         run: bun install --filter './packages/directory'

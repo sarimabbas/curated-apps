@@ -34,6 +34,8 @@ steps:
       persist-credentials: false
   - name: Setup Bun
     uses: oven-sh/setup-bun@v2
+  - name: Print Bun version
+    run: bun --version
   - name: Install directory dependencies
     run: bun install --filter './packages/directory'
   - name: Precompute issue context
