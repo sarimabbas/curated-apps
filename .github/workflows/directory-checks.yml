@@ -18,7 +18,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --filter './packages/directory'
 
       - name: Run directory checks
-        run: bun run --cwd packages/directory check
+        run: bun run --filter directory check

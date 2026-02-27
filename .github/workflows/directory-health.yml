@@ -21,10 +21,10 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --filter './packages/directory'
 
       - name: Check remote logo URLs
-        run: bun run --cwd packages/directory health:logos
+        run: bun run --filter directory health:logos
 
       - name: Upsert rolling health issue
         env:

@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"a4b75c2720d61407d90e51100691137ff2f98c42dce8279d14dbaf486f749823","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"ccf2870e6dd2d45bb436769a2e31e4897f9b96bcd952af21587953c8d284a63a","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
@@ -256,8 +256,10 @@ jobs:
         uses: github/gh-aw/actions/setup@a7d371cc7e68f270ded0592942424548e05bf1c2 # v0.50.5
         with:
           destination: /opt/gh-aw/actions
+      - name: Create gh-aw temp directory
+        run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
       - name: Setup Bun
@@ -269,10 +271,12 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Create gh-aw temp directory
-        run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
       - name: Install directory dependencies
-        run: bun install --cwd packages/directory
+        run: bun install --filter './packages/directory'
+      - name: Precompute issue context
+        run: |-
+          mkdir -p /tmp/gh-aw/agent
+          printf '%s' '${{ toJson(github.event.issue) }}' > /tmp/gh-aw/agent/issue.json
 
       - name: Configure Git credentials
         env:
@@ -326,9 +330,9 @@ jobs:
               actor: context.actor,
               event_name: context.eventName,
               staged: false,
-              allowed_domains: ["defaults","*.tavily.com"],
-              firewall_enabled: true,
-              awf_version: "v0.23.0",
+              allowed_domains: ["*"],
+              firewall_enabled: false,
+              awf_version: "",
               awmg_version: "v0.1.5",
               steps: {
                 firewall: "squid"
@@ -779,7 +783,7 @@ jobs:
           set -o pipefail
           mkdir -p "$CODEX_HOME/logs"
           # shellcheck disable=SC1003
-          sudo -E awf --env-all --container-workdir "${GITHUB_WORKSPACE}" --allow-domains "*.tavily.com,172.30.0.1,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com" --log-level info --proxy-logs-dir /tmp/gh-aw/sandbox/firewall/logs --enable-host-access --image-tag 0.23.0 --skip-pull --enable-api-proxy \
+          sudo -E awf --env-all --container-workdir "${GITHUB_WORKSPACE}" --allow-domains "*,172.30.0.1,api.openai.com,host.docker.internal,openai.com" --log-level info --proxy-logs-dir /tmp/gh-aw/sandbox/firewall/logs --enable-host-access --image-tag 0.23.0 --skip-pull --enable-api-proxy \
             -- /bin/bash -c 'export PATH="$(find /opt/hostedtoolcache -maxdepth 4 -type d -name bin 2>/dev/null | tr '\''\n'\'' '\'':'\'')$PATH"; [ -n "$GOROOT" ] && export PATH="$GOROOT/bin:$PATH" || true && INSTRUCTION="$(cat /tmp/gh-aw/aw-prompts/prompt.txt)" && codex ${GH_AW_MODEL_AGENT_CODEX:+-c model="$GH_AW_MODEL_AGENT_CODEX" }exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "$INSTRUCTION"' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
         env:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY || secrets.OPENAI_API_KEY }}
@@ -842,7 +846,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_SAFE_OUTPUTS: ${{ env.GH_AW_SAFE_OUTPUTS }}
-          GH_AW_ALLOWED_DOMAINS: "*.tavily.com,172.30.0.1,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com"
+          GH_AW_ALLOWED_DOMAINS: "*,172.30.0.1,api.openai.com,host.docker.internal,openai.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
         with:

@@ -1,6 +1,7 @@
 ---
 description: Research a URL or search term and open a PR adding or updating an app entry.
 engine: codex
+strict: false
 on:
   roles: [admin, maintainer, write]
   issues:
@@ -22,13 +23,20 @@ safe-outputs:
     max: 1
 network:
   allowed:
-    - defaults
-    - "*.tavily.com"
+    - "*"
 steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+    with:
+      persist-credentials: false
   - name: Setup Bun
     uses: oven-sh/setup-bun@v2
   - name: Install directory dependencies
-    run: bun install --cwd packages/directory
+    run: bun install --filter './packages/directory'
+  - name: Precompute issue context
+    run: |
+      mkdir -p /tmp/gh-aw/agent
+      printf '%s' '${{ toJson(github.event.issue) }}' > /tmp/gh-aw/agent/issue.json
 ---
 
 # app-directory-researcher
@@ -60,6 +68,7 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
 ## Your process
 
 1. Read the issue title/body and extract the request.
+   - Start from `/tmp/gh-aw/agent/issue.json` when available.
    - Reject low-signal requests (for example, fewer than 3 meaningful words for `search:`) and call `noop`.
 2. Research the app with Tavily MCP tools and direct fetches:
    - Use `search` for general app discovery and source URLs.
@@ -89,10 +98,19 @@ Require exactly one of `url:` or `search:`. If missing or both are present, add 
    - `name` and `slug` keys only
    - keep keys sorted alphabetically (`name`, then `slug`)
 7. Run checks from `packages/directory`:
-   - `bun run check`
+   - Ensure Bun is available. If `bun` is missing, install it first:
+     - `curl -fsSL https://bun.sh/install | bash`
+     - `export BUN_INSTALL="$HOME/.bun"`
+     - `export PATH="$BUN_INSTALL/bin:$PATH"`
+   - Then run `bun run --filter directory check`
 8. If checks pass, create one pull request using `create-pull-request`.
    - If checks fail for any reason, do not create a PR. Add one issue comment with the failing command output and call `noop`.
 9. Add one short issue comment with what was researched and a link to the PR.
+
+## Logo file downloads
+
+- To download a logo file into an app folder, use bash tools (for example `curl -L <url> -o apps/<app-slug>/logo.png`).
+- After download, verify it is an image and set frontmatter `logo` to `./logo.<ext>`.
 
 ## Pull request requirements
 
