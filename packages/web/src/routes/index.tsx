@@ -463,6 +463,14 @@ function AppDetailsModal({
 
 		navigateToDetail();
 	}, [app.slug, navigate]);
+	const openSimilarInModal = useCallback(
+		(appSlug: string) => {
+			void navigate({
+				search: (prev) => ({ ...prev, app: appSlug }),
+			});
+		},
+		[navigate],
+	);
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -515,6 +523,7 @@ function AppDetailsModal({
 
 					<AppDetailsContent
 						app={app}
+						onSelectSimilarApp={openSimilarInModal}
 						ratingSummary={ratingSummary}
 						tagsBySlug={tagsBySlug}
 						titleTag="h2"

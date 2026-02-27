@@ -1,7 +1,8 @@
 import { Command } from "cmdk";
-import Fuse from "fuse.js";
+import { useAction } from "convex/react";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { api } from "../../convex/_generated/api";
 import type { DirectoryApp } from "#/lib/directory";
 
 const MAX_RESULTS = 24;
@@ -30,35 +31,76 @@ export default function AppCommandMenu({
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [shortcutLabel, setShortcutLabel] = useState("⌘K");
+	const [isSearching, setIsSearching] = useState(false);
+	const [results, setResults] = useState<DirectoryApp[]>([]);
+	const [failedLogos, setFailedLogos] = useState<Set<string>>(new Set());
+	const vectorSearchApps = useAction((api as any).appCatalog.searchApps);
 
-	const fuse = useMemo(
+	const defaultResults = useMemo(
 		() =>
-			new Fuse(apps, {
-				ignoreLocation: true,
-				keys: [
-					{ name: "name", weight: 0.52 },
-					{ name: "description", weight: 0.28 },
-					{ name: "websiteHost", weight: 0.12 },
-					{ name: "tags", weight: 0.08 },
-				],
-				threshold: 0.34,
-			}),
+			[...apps]
+				.sort((a, b) => a.name.localeCompare(b.name))
+				.slice(0, MAX_RESULTS),
+		[apps],
+	);
+	const appsBySlug = useMemo(
+		() => new Map<string, DirectoryApp>(apps.map((app) => [app.slug, app])),
 		[apps],
 	);
 
-	const results = useMemo(() => {
-		const trimmed = query.trim();
-		if (!trimmed) {
-			return [...apps]
-				.sort((a, b) => a.name.localeCompare(b.name))
-				.slice(0, MAX_RESULTS);
+	useEffect(() => {
+		if (!open) {
+			setQuery("");
 		}
-		return fuse.search(trimmed, { limit: MAX_RESULTS }).map((result) => result.item);
-	}, [apps, fuse, query]);
+		setResults(defaultResults);
+	}, [open, defaultResults]);
 
 	useEffect(() => {
-		setQuery("");
-	}, [open]);
+		if (!open) {
+			return;
+		}
+
+		const trimmed = query.trim();
+		if (!trimmed) {
+			setIsSearching(false);
+			setResults(defaultResults);
+			return;
+		}
+
+		let cancelled = false;
+		const timer = window.setTimeout(() => {
+			setIsSearching(true);
+			void vectorSearchApps({
+				limit: MAX_RESULTS,
+				query: trimmed,
+			})
+				.then((matches: Array<{ appSlug: string }>) => {
+					if (cancelled) {
+						return;
+					}
+
+					const resolved = matches
+						.map((match) => appsBySlug.get(match.appSlug))
+						.filter((app): app is DirectoryApp => Boolean(app));
+					setResults(resolved);
+				})
+				.catch(() => {
+					if (!cancelled) {
+						setResults([]);
+					}
+				})
+				.finally(() => {
+					if (!cancelled) {
+						setIsSearching(false);
+					}
+				});
+		}, 160);
+
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [appsBySlug, defaultResults, open, query, vectorSearchApps]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") {
@@ -89,6 +131,17 @@ export default function AppCommandMenu({
 	function handleSelect(appSlug: string) {
 		onSelectApp(appSlug);
 		setOpen(false);
+	}
+
+	function markLogoFailed(appSlug: string) {
+		setFailedLogos((current) => {
+			if (current.has(appSlug)) {
+				return current;
+			}
+			const next = new Set(current);
+			next.add(appSlug);
+			return next;
+		});
 	}
 
 	return (
@@ -124,7 +177,9 @@ export default function AppCommandMenu({
 					</div>
 
 					<Command.List>
-						<Command.Empty>No apps found.</Command.Empty>
+						<Command.Empty>
+							{isSearching ? "Searching…" : "No apps found."}
+						</Command.Empty>
 						<Command.Group heading={query ? "Results" : "Apps"}>
 							{results.map((app) => (
 								<Command.Item
@@ -132,7 +187,22 @@ export default function AppCommandMenu({
 									value={app.slug}
 									onSelect={() => handleSelect(app.slug)}
 								>
-									<div className="min-w-0">
+									<div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--chip)]">
+										{!failedLogos.has(app.slug) ? (
+											<img
+												src={app.logo}
+												alt={`${app.name} logo`}
+												className="h-full w-full object-cover"
+												loading="lazy"
+												onError={() => markLogoFailed(app.slug)}
+											/>
+										) : (
+											<span className="text-xs font-semibold text-[var(--ink-strong)]">
+												{app.name.slice(0, 1).toUpperCase()}
+											</span>
+										)}
+									</div>
+									<div className="min-w-0 flex-1">
 										<p className="m-0 truncate text-sm font-semibold text-[var(--ink-strong)]">
 											{app.name}
 										</p>

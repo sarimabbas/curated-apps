@@ -3,7 +3,11 @@ import { useQuery } from "convex/react";
 import { useMemo } from "react";
 import { api } from "../../convex/_generated/api";
 import AppDetailsContent from "../components/AppDetailsContent";
-import { createTagsBySlug, getDirectoryAppBySlug, listDirectoryTags } from "#/lib/directory";
+import {
+	createTagsBySlug,
+	getDirectoryAppBySlug,
+	listDirectoryTags,
+} from "#/lib/directory";
 import { SITE_URL } from "#/lib/site";
 
 export const Route = createFileRoute("/apps/$slug")({

@@ -6,13 +6,16 @@
     "#/*": "./src/*"
   },
   "scripts": {
+    "catalog:sync": "bun run ./scripts/sync-app-catalog.ts",
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "predev": "bun run catalog:sync",
+    "prebuild": "bun run catalog:sync"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.49.0",
@@ -27,7 +30,6 @@
     "@tanstack/router-plugin": "^1.132.0",
     "cmdk": "^1.1.1",
     "convex": "^1.32.0",
-    "fuse.js": "^7.1.0",
     "lucide-react": "^0.545.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

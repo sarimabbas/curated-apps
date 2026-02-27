@@ -301,7 +301,9 @@ code {
 .cmdk-dialog [cmdk-item] {
   display: flex;
   align-items: center;
+  gap: 0.65rem;
   border-radius: 0.7rem;
+  min-height: 3.2rem;
   padding: 0.62rem 0.68rem;
   cursor: pointer;
 }

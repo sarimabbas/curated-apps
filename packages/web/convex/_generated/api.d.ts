@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as appCatalog from "../appCatalog.js";
 import type * as appRatings from "../appRatings.js";
 import type * as todos from "../todos.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  appCatalog: typeof appCatalog;
   appRatings: typeof appRatings;
   todos: typeof todos;
 }>;

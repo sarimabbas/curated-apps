@@ -7,6 +7,23 @@ export default defineSchema({
     imageId: v.string(),
     price: v.number(),
   }),
+  appCatalog: defineTable({
+    appSlug: v.string(),
+    name: v.string(),
+    description: v.string(),
+    websiteHost: v.string(),
+    tags: v.array(v.string()),
+    createdAtMs: v.number(),
+    updatedAtMs: v.number(),
+    sourceText: v.string(),
+    embedding: v.array(v.float64()),
+    syncedAt: v.number(),
+  })
+    .index('by_app_slug', ['appSlug'])
+    .vectorIndex('by_embedding', {
+      vectorField: 'embedding',
+      dimensions: 1536,
+    }),
   appRatings: defineTable({
     appSlug: v.string(),
     clerkUserId: v.string(),
