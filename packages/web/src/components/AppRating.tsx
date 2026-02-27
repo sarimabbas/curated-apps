@@ -20,7 +20,8 @@ export default function AppRating({
 }) {
 	const { isSignedIn } = useAuth();
 	const upsertRating = useMutation((api as any).appRatings.upsert);
-	const [pendingRating, setPendingRating] = useState<number | null>(null);
+	const removeRating = useMutation((api as any).appRatings.remove);
+	const [isSaving, setIsSaving] = useState(false);
 	const [localRating, setLocalRating] = useState<number | null>(
 		summary?.myRating ?? null,
 	);
@@ -50,7 +51,7 @@ export default function AppRating({
 
 	async function handleRate(rating: number) {
 		setError(null);
-		setPendingRating(rating);
+		setIsSaving(true);
 		const previous = localRating;
 		setLocalRating(rating);
 
@@ -64,7 +65,26 @@ export default function AppRating({
 			const message = err instanceof Error ? err.message : "Unable to save rating.";
 			setError(message);
 		} finally {
-			setPendingRating(null);
+			setIsSaving(false);
+		}
+	}
+
+	async function handleClear() {
+		setError(null);
+		setIsSaving(true);
+		const previous = localRating;
+		setLocalRating(null);
+
+		try {
+			await removeRating({
+				appSlug,
+			});
+		} catch (err) {
+			setLocalRating(previous);
+			const message = err instanceof Error ? err.message : "Unable to clear rating.";
+			setError(message);
+		} finally {
+			setIsSaving(false);
 		}
 	}
 
@@ -98,9 +118,14 @@ export default function AppRating({
 						<select
 							className="rounded-md border border-[var(--line)] bg-[var(--chip)] px-2 py-1 text-xs font-semibold text-[var(--ink-strong)]"
 							value={localRating?.toString() ?? ""}
-							disabled={pendingRating !== null}
+							disabled={isSaving}
 							onChange={(event) => {
-								const next = Number(event.target.value);
+								const value = event.target.value;
+								if (value === "") {
+									void handleClear();
+									return;
+								}
+								const next = Number(value);
 								if (!Number.isNaN(next) && ratingScale.includes(next)) {
 									void handleRate(next);
 								}

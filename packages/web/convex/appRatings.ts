@@ -89,3 +89,31 @@ export const upsert = mutation({
     })
   },
 })
+
+export const remove = mutation({
+  args: {
+    appSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity?.subject) {
+      throw new Error(
+        'Authentication token missing. Confirm Clerk JWT template "convex" and Convex auth.config.',
+      )
+    }
+
+    const existing = await ctx.db
+      .query('appRatings')
+      .withIndex('by_app_user', (q) =>
+        q.eq('appSlug', args.appSlug).eq('clerkUserId', identity.subject),
+      )
+      .unique()
+
+    if (!existing) {
+      return null
+    }
+
+    await ctx.db.delete(existing._id)
+    return existing._id
+  },
+})

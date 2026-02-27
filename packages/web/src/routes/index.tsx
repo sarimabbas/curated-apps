@@ -1,11 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { allApps, allTags } from "content-collections";
-import { CalendarDays, ExternalLink, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ExternalLink, Maximize2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
-import AppRating from "../components/AppRating";
+import AppDetailsContent from "../components/AppDetailsContent";
+import AppRating, { type RatingSummary } from "../components/AppRating";
 import HeaderUser from "../integrations/clerk/header-user";
+import {
+	createTagsBySlug,
+	formatAppDate,
+	listDirectoryApps,
+	listDirectoryTags,
+	type DirectoryApp,
+	type DirectoryTag,
+} from "#/lib/directory";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "#/lib/site";
 
 const canonical = `${SITE_URL}/`;
@@ -13,39 +21,19 @@ const GITHUB_REPO_URL = "https://github.com/sarimabbas/curated-apps";
 const SUBMIT_APP_URL =
 	"https://github.com/sarimabbas/curated-apps/issues/new?title=App%20submission%3A%20";
 
-type DirectoryApp = (typeof allApps)[number];
-type DirectoryTag = (typeof allTags)[number];
 type SortOption = "rating" | "alphabetical" | "created" | "updated";
 type SortDirection = "asc" | "desc";
-
-type AppRatingSummary =
-	| {
-			average: number | null;
-			count: number;
-			myRating: number | null;
-	  }
-	| undefined;
-
-const appDateFormatter = new Intl.DateTimeFormat("en-US", {
-	day: "numeric",
-	month: "short",
-	timeZone: "UTC",
-	year: "numeric",
-});
-
-function formatAppDate(value: string) {
-	const [year, month, day] = value.split("-").map(Number);
-	if (
-		!Number.isInteger(year) ||
-		!Number.isInteger(month) ||
-		!Number.isInteger(day)
-	) {
-		return value;
-	}
-	return appDateFormatter.format(new Date(Date.UTC(year, month - 1, day)));
-}
+type HomeSearch = {
+	app?: string;
+};
 
 export const Route = createFileRoute("/")({
+	validateSearch: (search: Record<string, unknown>): HomeSearch => ({
+		app:
+			typeof search.app === "string" && search.app.trim().length > 0
+				? search.app
+				: undefined,
+	}),
 	head: () => ({
 		links: [{ rel: "canonical", href: canonical }],
 		meta: [
@@ -58,20 +46,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+	const navigate = Route.useNavigate();
+	const { app: selectedAppSlug } = Route.useSearch();
 	const [activeTag, setActiveTag] = useState<string>("all");
 	const [sortBy, setSortBy] = useState<SortOption>("rating");
 	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-	const apps = useMemo(() => [...allApps], []);
+	const apps = useMemo(() => listDirectoryApps(), []);
 	const tags = useMemo(
-		() => [...allTags].sort((a, b) => a.name.localeCompare(b.name)),
+		() => listDirectoryTags().sort((a, b) => a.name.localeCompare(b.name)),
 		[],
 	);
 
-	const tagsBySlug = useMemo(
-		() => new Map<string, DirectoryTag>(tags.map((tag) => [tag.slug, tag])),
-		[tags],
-	);
+	const tagsBySlug = useMemo(() => createTagsBySlug(tags), [tags]);
 
 	const tagCounts = useMemo(() => {
 		const counts = new Map<string, number>();
@@ -93,6 +80,41 @@ function Home() {
 	const ratingSummaries = useQuery((api as any).appRatings.getSummaries, {
 		appSlugs: apps.map((app) => app.slug),
 	});
+	const selectedApp = useMemo(
+		() => apps.find((app) => app.slug === selectedAppSlug),
+		[apps, selectedAppSlug],
+	);
+	const selectedAppRating = selectedApp
+		? ratingSummaries?.[selectedApp.slug]
+		: undefined;
+
+	const openAppDetails = useCallback(
+		(appSlug: string) => {
+			navigate({
+				search: (prev) => ({ ...prev, app: appSlug }),
+			});
+		},
+		[navigate],
+	);
+
+	const closeAppDetails = useCallback(() => {
+		navigate({
+			replace: true,
+			search: (prev) => {
+				if (!prev.app) {
+					return prev;
+				}
+				const { app: _, ...rest } = prev;
+				return rest;
+			},
+		});
+	}, [navigate]);
+
+	useEffect(() => {
+		if (selectedAppSlug && !selectedApp) {
+			closeAppDetails();
+		}
+	}, [closeAppDetails, selectedApp, selectedAppSlug]);
 
 	const sortedVisibleApps = useMemo(() => {
 		const list = [...visibleApps];
@@ -168,7 +190,7 @@ function Home() {
 					Directory for high quality apps
 				</h1>
 				<p className="mt-4 max-w-2xl text-base text-[var(--ink-muted)] sm:text-lg">
-				   Curated and ranked by the crowd. Discover something new.
+					Curated and ranked by the crowd. Discover something new.
 				</p>
 				<p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--ink-soft)]">
 					<span>{apps.length} apps</span>
@@ -234,26 +256,26 @@ function Home() {
 						</label>
 
 						<div className="flex items-center rounded-md border border-[var(--line)] bg-[var(--chip)] p-0.5 text-xs">
-								<button
-									type="button"
-									onClick={() => setSortDirection("asc")}
-									className={`rounded px-2 py-1 font-semibold ${
-										sortDirection === "asc"
-											? "bg-[var(--ink-strong)] text-[var(--bg)]"
-											: "text-[var(--ink-soft)]"
-									}`}
-								>
+							<button
+								type="button"
+								onClick={() => setSortDirection("asc")}
+								className={`rounded px-2 py-1 font-semibold ${
+									sortDirection === "asc"
+										? "bg-[var(--ink-strong)] text-[var(--bg)]"
+										: "text-[var(--ink-soft)]"
+								}`}
+							>
 								Asc
 							</button>
-								<button
-									type="button"
-									onClick={() => setSortDirection("desc")}
-									className={`rounded px-2 py-1 font-semibold ${
-										sortDirection === "desc"
-											? "bg-[var(--ink-strong)] text-[var(--bg)]"
-											: "text-[var(--ink-soft)]"
-									}`}
-								>
+							<button
+								type="button"
+								onClick={() => setSortDirection("desc")}
+								className={`rounded px-2 py-1 font-semibold ${
+									sortDirection === "desc"
+										? "bg-[var(--ink-strong)] text-[var(--bg)]"
+										: "text-[var(--ink-soft)]"
+								}`}
+							>
 								Desc
 							</button>
 						</div>
@@ -267,6 +289,7 @@ function Home() {
 							app={app}
 							tagsBySlug={tagsBySlug}
 							index={index}
+							onOpenDetails={openAppDetails}
 							ratingSummary={ratingSummaries?.[app.slug]}
 						/>
 					))}
@@ -278,6 +301,15 @@ function Home() {
 					</div>
 				) : null}
 			</section>
+
+			{selectedApp ? (
+				<AppDetailsModal
+					app={selectedApp}
+					onClose={closeAppDetails}
+					ratingSummary={selectedAppRating}
+					tagsBySlug={tagsBySlug}
+				/>
+			) : null}
 		</main>
 	);
 }
@@ -286,12 +318,14 @@ function AppCard({
 	app,
 	tagsBySlug,
 	index,
+	onOpenDetails,
 	ratingSummary,
 }: {
 	app: DirectoryApp;
 	tagsBySlug: Map<string, DirectoryTag>;
 	index: number;
-	ratingSummary: AppRatingSummary;
+	onOpenDetails: (appSlug: string) => void;
+	ratingSummary: RatingSummary | undefined;
 }) {
 	const [logoFailed, setLogoFailed] = useState(false);
 
@@ -319,7 +353,13 @@ function AppCard({
 
 				<div className="min-w-0 flex-1">
 					<h2 className="truncate text-base font-semibold text-[var(--ink-strong)]">
-						{app.name}
+						<Link
+							to="/apps/$slug"
+							params={{ slug: app.slug }}
+							className="text-[var(--ink-strong)] no-underline transition hover:text-[var(--ink-soft)]"
+						>
+							{app.name}
+						</Link>
 					</h2>
 					<p className="truncate text-xs text-[var(--ink-soft)]">
 						{app.websiteHost}
@@ -331,15 +371,10 @@ function AppCard({
 				{app.description}
 			</p>
 
-			<div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--ink-soft)]">
-				<span className="inline-flex items-center gap-1">
-					<CalendarDays size={11} aria-hidden="true" />
-					Added {formatAppDate(app.created_at)}
-				</span>
-				<span className="inline-flex items-center gap-1">
-					<RefreshCw size={11} aria-hidden="true" />
-					Updated {formatAppDate(app.updated_at)}
-				</span>
+			<div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--ink-soft)]">
+				<span>Added {formatAppDate(app.created_at)}</span>
+				<span aria-hidden="true">•</span>
+				<span>Updated {formatAppDate(app.updated_at)}</span>
 			</div>
 
 			<div className="mb-4 flex flex-wrap gap-1.5">
@@ -357,6 +392,13 @@ function AppCard({
 			</div>
 
 			<div className="mt-auto flex items-center gap-2">
+				<button
+					type="button"
+					onClick={() => onOpenDetails(app.slug)}
+					className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+				>
+					Details
+				</button>
 				<a
 					href={app.website}
 					target="_blank"
@@ -381,6 +423,102 @@ function AppCard({
 
 			<AppRating appSlug={app.slug} summary={ratingSummary} />
 		</article>
+	);
+}
+
+function AppDetailsModal({
+	app,
+	onClose,
+	ratingSummary,
+	tagsBySlug,
+}: {
+	app: DirectoryApp;
+	onClose: () => void;
+	ratingSummary: RatingSummary | undefined;
+	tagsBySlug: Map<string, DirectoryTag>;
+}) {
+	const navigate = Route.useNavigate();
+
+	const openFullPage = useCallback(() => {
+		const navigateToDetail = () => {
+			void navigate({
+				to: "/apps/$slug",
+				params: { slug: app.slug },
+			});
+		};
+
+		const transitionDocument = document as Document & {
+			startViewTransition?: (update: () => void) => unknown;
+		};
+
+		if (typeof transitionDocument.startViewTransition === "function") {
+			transitionDocument.startViewTransition(() => {
+				navigateToDetail();
+			});
+			return;
+		}
+
+		navigateToDetail();
+	}, [app.slug, navigate]);
+
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				onClose();
+			}
+		};
+
+		const originalOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		window.addEventListener("keydown", onKeyDown);
+
+		return () => {
+			document.body.style.overflow = originalOverflow;
+			window.removeEventListener("keydown", onKeyDown);
+		};
+	}, [onClose]);
+
+	return (
+		<div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
+			<button
+				type="button"
+				onClick={onClose}
+				className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+				aria-label="Close app details"
+			/>
+
+			<div className="relative flex min-h-dvh items-end justify-center p-2 sm:items-center sm:p-6">
+				<article className="island-shell vt-app-shell relative w-full max-w-3xl max-h-[92dvh] overflow-y-auto rounded-t-2xl p-5 sm:rounded-2xl sm:p-7">
+					<div className="absolute right-3 top-3 flex items-center gap-1.5">
+						<button
+							type="button"
+							onClick={openFullPage}
+							className="rounded-full border border-[var(--line)] bg-[var(--chip)] p-1.5 text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+							aria-label="Open full page"
+							title="Open full page"
+						>
+							<Maximize2 size={16} />
+						</button>
+
+						<button
+							type="button"
+							onClick={onClose}
+							className="rounded-full border border-[var(--line)] bg-[var(--chip)] p-1.5 text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+							aria-label="Close"
+						>
+							<X size={16} />
+						</button>
+					</div>
+
+					<AppDetailsContent
+						app={app}
+						ratingSummary={ratingSummary}
+						tagsBySlug={tagsBySlug}
+						titleTag="h2"
+					/>
+				</article>
+			</div>
+		</div>
 	);
 }
 
