@@ -1,4 +1,4 @@
 export const SITE_TITLE = "Curated Apps";
 export const SITE_DESCRIPTION =
-	"A curated directory of high-quality macOS apps discovered, reviewed, and tagged.";
+	"A curated macOS app directory with tags, links, and user ratings.";
 export const SITE_URL = "https://curatedapps.dev";

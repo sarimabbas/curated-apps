@@ -78,8 +78,7 @@ body {
   font-family: var(--font-sans);
   background-color: var(--bg);
   background-image:
-    radial-gradient(1200px 640px at 8% -10%, rgba(111, 116, 219, 0.16), transparent 60%),
-    radial-gradient(1000px 700px at 95% -20%, rgba(17, 154, 185, 0.1), transparent 62%),
+    radial-gradient(900px 500px at 8% -10%, rgba(111, 116, 219, 0.1), transparent 62%),
     linear-gradient(180deg, color-mix(in oklab, var(--bg) 78%, white) 0%, var(--bg) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -113,13 +112,18 @@ code {
   font-family: 'Newsreader', Georgia, serif;
 }
 
+.hero-minimal {
+  margin-inline: 0.25rem;
+  padding: 0.5rem 0.25rem 1.35rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 88%, transparent 12%);
+}
+
 .island-shell {
   border: 1px solid var(--line);
   background: linear-gradient(170deg, var(--card-strong), var(--card));
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 20px 44px rgba(11, 16, 24, 0.1),
-    0 3px 10px rgba(11, 16, 24, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 8px 22px rgba(11, 16, 24, 0.08);
   backdrop-filter: blur(6px);
 }
 

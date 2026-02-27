@@ -5,14 +5,14 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
-import appCss from "../styles.css?url";
-
 import type { QueryClient } from "@tanstack/react-query";
+import Footer from "../components/Footer";
+import AppClerkProvider from "../integrations/clerk/provider";
+import AppConvexProvider from "../integrations/convex/provider";
+import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import { SITE_DESCRIPTION, SITE_TITLE } from "#/lib/site";
+import appCss from "../styles.css?url";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -23,27 +23,12 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	head: () => ({
 		meta: [
-			{
-				charSet: "utf-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: SITE_TITLE,
-			},
-			{
-				name: "description",
-				content: SITE_DESCRIPTION,
-			},
+			{ charSet: "utf-8" },
+			{ name: "viewport", content: "width=device-width, initial-scale=1" },
+			{ title: SITE_TITLE },
+			{ name: "description", content: SITE_DESCRIPTION },
 		],
-		links: [
-			{
-				rel: "stylesheet",
-				href: appCss,
-			},
-		],
+		links: [{ rel: "stylesheet", href: appCss }],
 	}),
 	shellComponent: RootDocument,
 });
@@ -57,21 +42,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
 				<TanStackQueryProvider>
-					<Header />
-					{children}
-					<Footer />
-					<TanStackDevtools
-						config={{
-							position: "bottom-right",
-						}}
-						plugins={[
-							{
-								name: "Tanstack Router",
-								render: <TanStackRouterDevtoolsPanel />,
-							},
-							TanStackQueryDevtools,
-						]}
-					/>
+					<AppClerkProvider>
+						<AppConvexProvider>
+							{children}
+							<Footer />
+							<TanStackDevtools
+								config={{ position: "bottom-right" }}
+								plugins={[
+									{
+										name: "Tanstack Router",
+										render: <TanStackRouterDevtoolsPanel />,
+									},
+									TanStackQueryDevtools,
+								]}
+							/>
+						</AppConvexProvider>
+					</AppClerkProvider>
 				</TanStackQueryProvider>
 				<Scripts />
 			</body>

@@ -73,11 +73,13 @@ const app = defineCollection({
   include: '**/*.md',
   schema: z.object({
     apple_app_store: z.url().optional(),
+    created_at: z.string().date(),
     description: z.string(),
     logo: z.string(),
     name: z.string(),
     slug: z.string(),
     tags: z.array(z.string()),
+    updated_at: z.string().date(),
     website: z.url(),
   }),
   transform: async (document) => {
@@ -85,8 +87,10 @@ const app = defineCollection({
 
     return {
       ...document,
+      createdAtMs: new Date(document.created_at).getTime(),
       logo: resolvedLogo,
       logoIsEmbedded: resolvedLogo.startsWith('data:'),
+      updatedAtMs: new Date(document.updated_at).getTime(),
       websiteHost: new URL(document.website).host.replace(/^www\./, ''),
     }
   },
