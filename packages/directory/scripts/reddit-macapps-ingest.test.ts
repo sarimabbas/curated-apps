@@ -2,8 +2,10 @@ import { expect, test } from "bun:test"
 
 import {
   buildCandidate,
+  collectExistingIssueMarkers,
   extractUrlsFromSelftext,
   isLikelyAppPost,
+  parseLabelList,
   pickSourceUrl,
   selectCandidates,
   sourceKeyFromUrl,
@@ -100,4 +102,27 @@ test("buildCandidate and selectCandidates include only fresh qualifying posts", 
 
   expect(selected).toHaveLength(1)
   expect(selected[0]?.postId).toBe("1fresh01")
+})
+
+test("parseLabelList reads comma-separated labels and falls back safely", () => {
+  expect(parseLabelList("ai:triage, ai:research", ["x"])).toEqual(["ai:triage", "ai:research"])
+  expect(parseLabelList("   ", ["ai:triage"])).toEqual(["ai:triage"])
+  expect(parseLabelList(undefined, ["ai:triage"])).toEqual(["ai:triage"])
+})
+
+test("collectExistingIssueMarkers captures post IDs and source keys", () => {
+  const markers = collectExistingIssueMarkers([
+    {
+      title: "[reddit/macapps:1abc123] Example",
+      body: "source_key: apps.apple.com/id12345\nreddit_post_id: 1abc123",
+    },
+    {
+      title: "Manual triage issue",
+      body: "source_key: github.com/example/tool",
+    },
+  ])
+
+  expect(markers.postIds.has("1abc123")).toBe(true)
+  expect(markers.sourceKeys.has("apps.apple.com/id12345")).toBe(true)
+  expect(markers.sourceKeys.has("github.com/example/tool")).toBe(true)
 })

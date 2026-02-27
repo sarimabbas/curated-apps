@@ -41,8 +41,10 @@ jobs:
 
       - name: Ingest Reddit candidates
         env:
+          DEDUPE_LABELS: "ai:triage,ai:research"
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
+          INGEST_LABEL: "ai:triage"
           MAX_ISSUES_PER_RUN: "10"
           MAX_POST_AGE_HOURS: "36"
           REDDIT_LIMIT: "100"

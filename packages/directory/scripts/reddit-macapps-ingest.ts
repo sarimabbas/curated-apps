@@ -7,7 +7,8 @@ const DEFAULT_LIMIT = 100
 const DEFAULT_MAX_ISSUES_PER_RUN = 10
 const DEFAULT_MAX_POST_AGE_HOURS = 36
 const REDDIT_USER_AGENT_FALLBACK = "curated-apps-reddit-ingest/1.0"
-const RESEARCH_LABEL = "ai:research"
+const DEFAULT_INGEST_LABEL = "ai:triage"
+const DEFAULT_DEDUPE_LABELS = ["ai:triage", "ai:research"]
 
 const ALLOWED_FLAIRS = new Set(["Free", "Lifetime", "Subscription", "Deal", "Review", "Tip"])
 const BLOCKED_FLAIRS = new Set(["Help", "Request"])
@@ -76,6 +77,8 @@ type ExistingIssueMarkers = {
   sourceKeys: Set<string>
 }
 
+export type ExistingIssueForDedupe = Pick<GithubIssue, "body" | "title">
+
 function toInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback
   const parsed = Number.parseInt(value, 10)
@@ -85,6 +88,16 @@ function toInt(value: string | undefined, fallback: number): number {
 function toBool(value: string | undefined): boolean {
   if (!value) return false
   return value === "1" || value.toLowerCase() === "true"
+}
+
+export function parseLabelList(value: string | undefined, fallback: string[]): string[] {
+  if (!value) return [...fallback]
+  const parsed = value
+    .split(",")
+    .map(label => label.trim())
+    .filter(Boolean)
+
+  return parsed.length > 0 ? parsed : [...fallback]
 }
 
 export function normalizeExtractedUrl(value: string): string | null {
@@ -356,7 +369,7 @@ async function githubRequest<T>(params: {
   return (await response.json()) as T
 }
 
-async function listResearchIssues(params: {
+async function listIssuesByLabel(params: {
   label: string
   repo: string
   token: string
@@ -376,7 +389,29 @@ async function listResearchIssues(params: {
   return issues
 }
 
-function collectExistingIssueMarkers(issues: GithubIssue[]): ExistingIssueMarkers {
+async function listIssuesForLabels(params: {
+  labels: string[]
+  repo: string
+  token: string
+}): Promise<GithubIssue[]> {
+  const dedupedByNumber = new Map<number, GithubIssue>()
+
+  for (const label of params.labels) {
+    const issues = await listIssuesByLabel({
+      label,
+      repo: params.repo,
+      token: params.token,
+    })
+
+    for (const issue of issues) {
+      dedupedByNumber.set(issue.number, issue)
+    }
+  }
+
+  return [...dedupedByNumber.values()]
+}
+
+export function collectExistingIssueMarkers(issues: ExistingIssueForDedupe[]): ExistingIssueMarkers {
   const postIds = new Set<string>()
   const sourceKeys = new Set<string>()
 
@@ -401,7 +436,7 @@ function collectExistingIssueMarkers(issues: GithubIssue[]): ExistingIssueMarker
   return { postIds, sourceKeys }
 }
 
-async function ensureResearchLabel(params: { repo: string; token: string }): Promise<void> {
+async function ensureLabel(params: { label: string; repo: string; token: string }): Promise<void> {
   try {
     await githubRequest({
       method: "POST",
@@ -409,8 +444,8 @@ async function ensureResearchLabel(params: { repo: string; token: string }): Pro
       token: params.token,
       body: {
         color: "1d76db",
-        description: "Queue app research",
-        name: RESEARCH_LABEL,
+        description: "Queue app triage",
+        name: params.label,
       },
     })
   } catch (error) {
@@ -423,6 +458,7 @@ async function ensureResearchLabel(params: { repo: string; token: string }): Pro
 
 async function createResearchIssue(params: {
   body: string
+  label: string
   repo: string
   title: string
   token: string
@@ -432,8 +468,8 @@ async function createResearchIssue(params: {
     path: `/repos/${params.repo}/issues`,
     token: params.token,
     body: {
-      body: params.body,
-      labels: [RESEARCH_LABEL],
+    body: params.body,
+      labels: [params.label],
       title: params.title,
     },
   })
@@ -469,6 +505,12 @@ async function main(): Promise<void> {
   const maxIssuesPerRun = toInt(process.env.MAX_ISSUES_PER_RUN, DEFAULT_MAX_ISSUES_PER_RUN)
   const maxPostAgeHours = toInt(process.env.MAX_POST_AGE_HOURS, DEFAULT_MAX_POST_AGE_HOURS)
   const userAgent = process.env.REDDIT_USER_AGENT ?? REDDIT_USER_AGENT_FALLBACK
+  const ingestLabel = process.env.INGEST_LABEL?.trim() || DEFAULT_INGEST_LABEL
+  const dedupeLabels = parseLabelList(process.env.DEDUPE_LABELS, DEFAULT_DEDUPE_LABELS)
+
+  if (!dedupeLabels.includes(ingestLabel)) {
+    dedupeLabels.push(ingestLabel)
+  }
 
   const repo = process.env.GITHUB_REPOSITORY
   const token = process.env.GITHUB_TOKEN
@@ -502,8 +544,8 @@ async function main(): Promise<void> {
   }
 
   if (!dryRun && repo && token) {
-    const existingIssues = await listResearchIssues({
-      label: RESEARCH_LABEL,
+    const existingIssues = await listIssuesForLabels({
+      labels: dedupeLabels,
       repo,
       token,
     })
@@ -526,6 +568,8 @@ async function main(): Promise<void> {
     skippedBecauseKnownDirectory: prefiltered.filter(candidate => knownSourceKeys.has(candidate.sourceKey)).length,
     skippedBecauseExistingIssue:
       prefiltered.filter(candidate => existingMarkers.postIds.has(candidate.postId) || existingMarkers.sourceKeys.has(candidate.sourceKey)).length,
+    ingestLabel,
+    dedupeLabels,
     subreddit,
   }
 
@@ -542,11 +586,16 @@ async function main(): Promise<void> {
     return
   }
 
-  await ensureResearchLabel({ repo, token })
+  await ensureLabel({
+    label: ingestLabel,
+    repo,
+    token,
+  })
 
   for (const candidate of queued) {
     const created = await createResearchIssue({
       body: candidate.issueBody,
+      label: ingestLabel,
       repo,
       title: candidate.issueTitle,
       token,
