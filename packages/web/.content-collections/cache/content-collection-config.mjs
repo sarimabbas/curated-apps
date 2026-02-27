@@ -2,6 +2,8 @@
 import { defineCollection, defineConfig } from "@content-collections/core";
 import { compileMarkdown } from "@content-collections/markdown";
 import { compileMDX } from "@content-collections/mdx";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
 var blog = defineCollection({
@@ -28,8 +30,68 @@ var blog = defineCollection({
     };
   }
 });
+var directoryAppsPath = path.resolve(process.cwd(), "../directory/apps");
+var logoMimeByExtension = {
+  ".avif": "image/avif",
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp"
+};
+async function resolveLogo(logo, filePath) {
+  if (!logo.startsWith("./")) {
+    return logo;
+  }
+  const appFileAbsolutePath = path.resolve(directoryAppsPath, filePath);
+  const logoAbsolutePath = path.resolve(path.dirname(appFileAbsolutePath), logo);
+  const extension = path.extname(logoAbsolutePath).toLowerCase();
+  const mimeType = logoMimeByExtension[extension];
+  if (!mimeType) {
+    return logo;
+  }
+  try {
+    const bytes = await readFile(logoAbsolutePath);
+    return `data:${mimeType};base64,${bytes.toString("base64")}`;
+  } catch {
+    return logo;
+  }
+}
+var app = defineCollection({
+  name: "app",
+  directory: "../directory/apps",
+  include: "**/*.md",
+  schema: z.object({
+    apple_app_store: z.url().optional(),
+    description: z.string(),
+    logo: z.string(),
+    name: z.string(),
+    slug: z.string(),
+    tags: z.array(z.string()),
+    website: z.url()
+  }),
+  transform: async (document) => {
+    const resolvedLogo = await resolveLogo(document.logo, document._meta.filePath);
+    return {
+      ...document,
+      logo: resolvedLogo,
+      logoIsEmbedded: resolvedLogo.startsWith("data:"),
+      websiteHost: new URL(document.website).host.replace(/^www\./, "")
+    };
+  }
+});
+var tag = defineCollection({
+  name: "tag",
+  directory: "../directory/tags",
+  include: "**/*.md",
+  schema: z.object({
+    name: z.string(),
+    slug: z.string()
+  })
+});
 var content_collections_default = defineConfig({
-  collections: [blog]
+  collections: [blog, app, tag]
 });
 export {
   content_collections_default as default
