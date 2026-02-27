@@ -45,6 +45,11 @@ Look for either of these in the issue title or body:
 - `url: <https://...>`
 - `search: <keywords>`
 
+Also support issue-form fields where values appear under headings like:
+
+- `### URL`
+- `### Search term`
+
 Require exactly one of `url:` or `search:`. If missing or both are present, add a short comment explaining the required format and call `noop`.
 
 ## Your process

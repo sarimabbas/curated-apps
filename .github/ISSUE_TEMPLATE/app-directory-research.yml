@@ -1,0 +1,62 @@
+name: App directory research request
+description: Ask the AI workflow to research an app and open a PR.
+title: "[app-research] <app or query>"
+labels:
+  - app-directory
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to request an app entry update.
+
+        Maintainers: add the `ai:research` label to trigger the workflow.
+
+        Provide exactly one of the two inputs below:
+        - `url` for direct lookup, or
+        - `search` for discovery.
+
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: Request type
+      description: Choose one path for this request.
+      options:
+        - URL lookup
+        - Search term
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: Official app URL to research (use this OR search term).
+      placeholder: https://example.com
+    validations:
+      required: false
+
+  - type: input
+    id: search
+    attributes:
+      label: Search term
+      description: Keywords for discovery (use this OR URL).
+      placeholder: menu bar clipboard manager mac
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Any context, category hints, or trusted sources.
+      placeholder: Mention known app store page, alternatives, or relevant tags.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I provided exactly one of URL or search term.
+          required: true
