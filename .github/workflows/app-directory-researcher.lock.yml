@@ -23,7 +23,7 @@
 #
 # Research a URL or search term and open a PR adding or updating an app entry.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"f0395d3f24cef2d214a80d770d9e1db3eef7e1cc4e8ab9a934f42e31d40cf0df","compiler_version":"v0.50.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"ff92bd8f09b7ee097286abb9851cf882272d4e055bddda894a1ce73fb15f08de","compiler_version":"v0.50.5"}
 
 name: "app-directory-researcher"
 "on":
@@ -260,15 +260,15 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
-        with:
-          bun-version: '1.1'
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
+        with:
+          bun-version: 1.3.9
       - name: Print Bun version
         run: bun --version
       - name: Install directory dependencies

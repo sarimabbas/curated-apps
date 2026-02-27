@@ -34,6 +34,8 @@ steps:
       persist-credentials: false
   - name: Setup Bun
     uses: oven-sh/setup-bun@v2
+    with:
+      bun-version: 1.3.9
   - name: Print Bun version
     run: bun --version
   - name: Install directory dependencies
