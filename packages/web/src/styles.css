@@ -233,3 +233,92 @@ code {
     transform: scale(1);
   }
 }
+
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(11, 15, 22, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.cmdk-dialog {
+  position: fixed;
+  left: 50%;
+  top: 14%;
+  z-index: 71;
+  width: min(720px, calc(100vw - 1rem));
+  transform: translateX(-50%);
+}
+
+.cmdk-inner {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: linear-gradient(170deg, var(--card-strong), var(--card));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 20px 48px rgba(7, 11, 18, 0.28);
+  overflow: hidden;
+}
+
+.cmdk-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.82rem 0.95rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.cmdk-dialog [cmdk-input] {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink-strong);
+  font-size: 0.9rem;
+}
+
+.cmdk-dialog [cmdk-input]::placeholder {
+  color: var(--ink-soft);
+}
+
+.cmdk-dialog [cmdk-list] {
+  max-height: min(62vh, 420px);
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.cmdk-dialog [cmdk-group-heading] {
+  padding: 0.25rem 0.4rem 0.45rem;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.cmdk-dialog [cmdk-item] {
+  display: flex;
+  align-items: center;
+  border-radius: 0.7rem;
+  padding: 0.62rem 0.68rem;
+  cursor: pointer;
+}
+
+.cmdk-dialog [cmdk-item][data-selected='true'] {
+  background: color-mix(in oklab, var(--chip) 72%, var(--lagoon-deep) 28%);
+}
+
+.cmdk-dialog [cmdk-empty] {
+  padding: 0.95rem 0.72rem;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .cmdk-dialog {
+    top: 1rem;
+    width: calc(100vw - 0.75rem);
+  }
+}

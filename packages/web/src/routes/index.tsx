@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { ExternalLink, Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
+import AppCommandMenu from "../components/AppCommandMenu";
 import AppDetailsContent from "../components/AppDetailsContent";
 import AppRating, { type RatingSummary } from "../components/AppRating";
 import HeaderUser from "../integrations/clerk/header-user";
@@ -241,6 +242,8 @@ function Home() {
 					</div>
 
 					<div className="ml-auto flex items-center gap-2">
+						<AppCommandMenu apps={apps} onSelectApp={openAppDetails} />
+
 						<label className="flex items-center gap-2 text-xs font-semibold text-[var(--ink-soft)]">
 							Sort
 							<select
